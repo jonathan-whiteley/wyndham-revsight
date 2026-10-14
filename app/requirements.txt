@@ -1,0 +1,7 @@
+# Pinned to the versions RevSight IQ was tested with (older SDKs lack Genie attachment fields)
+fastapi==0.142.2
+uvicorn==0.54.0
+pydantic==2.13.5
+databricks-sdk==0.147.0
+databricks-sql-connector==4.6.0
+openpyxl==3.1.5

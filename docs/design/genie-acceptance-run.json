@@ -1,0 +1,682 @@
+[
+  {
+    "model": "nt",
+    "prompt": "RevPAR, ADR and occupancy by chain scale for September 2026 vs September 2025",
+    "status": "COMPLETED",
+    "seconds": 18.4,
+    "sql": "SELECT\n  `chain_scale`,\n  `year`,\n  MEASURE(`occupancy`) * 100 AS `occupancy`,\n  MEASURE(`adr`) AS `adr`,\n  MEASURE(`revpar`) AS `revpar`\nFROM `jdub_demo`.`wyndham`.`mv_nt_performance`\nWHERE `month` IN (DATE'2025-09-01', DATE'2026-09-01')\n  AND `chain_scale` IS NOT NULL\n  AND `year` IS NOT NULL\nGROUP BY ALL\nORDER BY `chain_scale`, `year`",
+    "text": "September 2026 vs September 2025 shows **higher ADR in every chain scale**, while **occupancy is lower in every chain scale**, leaving RevPAR mostly flat to slightly down except in Economy and Upscale. Examples include:\n- **Economy**: occupancy **59.8%** vs **61.4%**, ADR **$99.86** vs **$96.39**, RevPAR **$59.70** vs **$59.20**\n- **Midscale**: occupancy **62.7%** vs **65.5%**, ADR **$137.01** vs **$132.42**, RevPAR **$85.90** vs **$86.68**\n- **Upper Midscale**: occupancy **65.3%** vs **68.4%**, ADR **$160.86** vs **$155.55**, RevPAR **$104.98** vs **$106.47**\n- **Upscale**: occupancy **69.5%** vs **71.9%**, ADR **$212.16** vs **$204.93**, RevPAR **$147.47** vs **$147.36**\n- **Upper Upscale**: occupancy **70.8%** vs **73.6%**, ADR **$323.66** vs **$313.45**, RevPAR **$229.19** vs **$230.56**\n\nAmong these 10 results, **Upper Upscale** had the highest September 2026 ADR and RevPAR, while **Economy** had the lowest, and the biggest occupancy decline was in **Upper Midscale**.",
+    "rows": [
+      {
+        "chain_scale": "Economy",
+        "year": "2025",
+        "occupancy": "61.41994745565089",
+        "adr": "96.386797651640",
+        "revpar": "59.200720471822"
+      },
+      {
+        "chain_scale": "Economy",
+        "year": "2026",
+        "occupancy": "59.785173047256855",
+        "adr": "99.861235351032",
+        "revpar": "59.702212361743"
+      },
+      {
+        "chain_scale": "Midscale",
+        "year": "2025",
+        "occupancy": "65.46071843674926",
+        "adr": "132.415761371699",
+        "revpar": "86.680308717406"
+      },
+      {
+        "chain_scale": "Midscale",
+        "year": "2026",
+        "occupancy": "62.69215166861748",
+        "adr": "137.010890090942",
+        "revpar": "85.895075018336"
+      },
+      {
+        "chain_scale": "Upper Midscale",
+        "year": "2025",
+        "occupancy": "68.44493655655928",
+        "adr": "155.551828121845",
+        "revpar": "106.467350070565"
+      },
+      {
+        "chain_scale": "Upper Midscale",
+        "year": "2026",
+        "occupancy": "65.26268708180041",
+        "adr": "160.862883413689",
+        "revpar": "104.983440233037"
+      },
+      {
+        "chain_scale": "Upper Upscale",
+        "year": "2025",
+        "occupancy": "73.55400504833393",
+        "adr": "313.452136102886",
+        "revpar": "230.556600013227"
+      },
+      {
+        "chain_scale": "Upper Upscale",
+        "year": "2026",
+        "occupancy": "70.81146203215633",
+        "adr": "323.660305139516",
+        "revpar": "229.188594087029"
+      }
+    ],
+    "description": "You want to see the occupancy rate, average daily rate (ADR), and revenue per available room (RevPAR) broken down by chain scale for September 2026 compared to September 2025.",
+    "row_count": 10
+  },
+  {
+    "model": "nt",
+    "prompt": "Split economy by hurricane vs non-hurricane markets",
+    "status": "COMPLETED",
+    "seconds": 13.3,
+    "sql": "SELECT\n  `hurricane_market`,\n  `year`,\n  MEASURE(`occupancy`) AS `occupancy`,\n  MEASURE(`adr`) AS `adr`,\n  MEASURE(`revpar`) AS `revpar`\nFROM `jdub_demo`.`wyndham`.`mv_nt_performance`\nWHERE `chain_scale` ILIKE '%Economy%'\n  AND `month` IN (DATE'2025-09-01', DATE'2026-09-01')\n  AND `hurricane_market` IS NOT NULL\n  AND `year` IS NOT NULL\nGROUP BY ALL\nORDER BY `hurricane_market` DESC, `year`",
+    "text": "For **Economy** hotels in **September 2026 vs September 2025**, **non-hurricane markets** outperformed **hurricane markets** in both years on all three measures. In **2026**, non-hurricane markets had **63.1% occupancy**, **$101.80 ADR**, and **$64.19 RevPAR**, versus hurricane markets at **51.0% occupancy**, **$93.38 ADR**, and **$47.59 RevPAR**; compared with **2025**, hurricane markets declined across occupancy and RevPAR, while non-hurricane markets improved on all three measures.",
+    "rows": [
+      {
+        "hurricane_market": "true",
+        "year": "2025",
+        "occupancy": "0.5871246102945855",
+        "adr": "90.714158680189",
+        "revpar": "53.260515063307"
+      },
+      {
+        "hurricane_market": "true",
+        "year": "2026",
+        "occupancy": "0.5096617404011587",
+        "adr": "93.382582145227",
+        "revpar": "47.593529339290"
+      },
+      {
+        "hurricane_market": "false",
+        "year": "2025",
+        "occupancy": "0.6242637907128687",
+        "adr": "98.369991958670",
+        "revpar": "61.408824072514"
+      },
+      {
+        "hurricane_market": "false",
+        "year": "2026",
+        "occupancy": "0.6305460705448289",
+        "adr": "101.802582599922",
+        "revpar": "64.191218429696"
+      }
+    ],
+    "description": "You want to see the occupancy, average daily rate (ADR), and revenue per available room (RevPAR) for Economy chain scale hotels, broken down by whether they are in hurricane-exposed markets or not, comparing September 2025 and September 2026.",
+    "row_count": 4
+  },
+  {
+    "model": "nt",
+    "prompt": "Show RGI vs comp set for that",
+    "status": "COMPLETED",
+    "seconds": 8.4,
+    "sql": null,
+    "text": "Comp-set metrics such as RGI, MPI and ARI come from STR weekly benchmarking, which is not in the NT Performance model.\nSwitch the Data model to STR Comp Set (weekly) to see this vs the comp set.",
+    "rows": null
+  },
+  {
+    "model": "str",
+    "prompt": "Weekly RGI vs comp set by chain scale, hurricane vs non-hurricane, Aug-Sep 2026",
+    "status": "COMPLETED",
+    "seconds": 26.2,
+    "sql": "SELECT `week_start`, `chain_scale`, `hurricane_market`, MEASURE(`rgi`) AS `rgi`, MEASURE(`mpi`) AS `mpi`, MEASURE(`ari`) AS `ari`\nFROM `jdub_demo`.`wyndham`.`mv_str_compset`\nWHERE `week_start` BETWEEN DATE'2026-08-02' AND DATE'2026-09-27'\n  AND `week_start` IS NOT NULL\n  AND `chain_scale` IS NOT NULL\n  AND `hurricane_market` IS NOT NULL\nGROUP BY ALL\nORDER BY `week_start` ASC, `chain_scale` ASC, `hurricane_market` ASC",
+    "text": "Weekly **RGI** is generally near **100** in non-hurricane markets across chain scales, while hurricane-market results are more volatile in the visible weeks. Examples include:\n- **Economy**: **119.7** in hurricane markets vs **99.1** in non-hurricane markets for **2026-09-06**\n- **Economy**: **108.8** in hurricane markets vs **99.2** in non-hurricane markets for **2026-08-30**\n- **Midscale**: **92.2** in hurricane markets vs **99.0** in non-hurricane markets for **2026-08-30**\n- **Upper Upscale**: **97.2** in hurricane markets vs **98.5** in non-hurricane markets for **2026-08-16**\n- **Upscale**: **95.8** in hurricane markets vs **99.7** in non-hurricane markets for **2026-08-30**",
+    "rows": [
+      {
+        "week_start": "2026-08-02",
+        "chain_scale": "Economy",
+        "hurricane_market": "false",
+        "rgi": "99.149948",
+        "mpi": "100.03052188417828",
+        "ari": "99.119695"
+      },
+      {
+        "week_start": "2026-08-02",
+        "chain_scale": "Economy",
+        "hurricane_market": "true",
+        "rgi": "99.209958",
+        "mpi": "100.04635589303952",
+        "ari": "99.163990"
+      },
+      {
+        "week_start": "2026-08-02",
+        "chain_scale": "Midscale",
+        "hurricane_market": "false",
+        "rgi": "98.894448",
+        "mpi": "100.05372320809715",
+        "ari": "98.841348"
+      },
+      {
+        "week_start": "2026-08-02",
+        "chain_scale": "Midscale",
+        "hurricane_market": "true",
+        "rgi": "99.545402",
+        "mpi": "100.23227583701718",
+        "ari": "99.314718"
+      },
+      {
+        "week_start": "2026-08-02",
+        "chain_scale": "Upper Midscale",
+        "hurricane_market": "false",
+        "rgi": "98.792312",
+        "mpi": "99.86156853658203",
+        "ari": "98.929261"
+      },
+      {
+        "week_start": "2026-08-02",
+        "chain_scale": "Upper Midscale",
+        "hurricane_market": "true",
+        "rgi": "99.186008",
+        "mpi": "99.98332342166658",
+        "ari": "99.202551"
+      },
+      {
+        "week_start": "2026-08-02",
+        "chain_scale": "Upper Upscale",
+        "hurricane_market": "false",
+        "rgi": "98.576956",
+        "mpi": "99.72866979697507",
+        "ari": "98.845152"
+      },
+      {
+        "week_start": "2026-08-02",
+        "chain_scale": "Upper Upscale",
+        "hurricane_market": "true",
+        "rgi": "98.014724",
+        "mpi": "99.1285529231969",
+        "ari": "98.876379"
+      }
+    ],
+    "description": "You want to see the weekly Revenue Generation Index (RGI), Market Penetration Index (MPI), and Average Rate Index (ARI) for Wyndham properties compared to their competitive sets, broken down by chain scale and whether the property is in a hurricane-affected market or not, for the period from August to September 2026.",
+    "row_count": 90
+  },
+  {
+    "model": "str",
+    "prompt": "Now by brand, Gulf Coast states only, weekly for Aug-Sep 2026",
+    "status": "COMPLETED",
+    "seconds": 18.3,
+    "sql": "SELECT\n  `week_start`,\n  `brand`,\n  MEASURE(`occupancy`) AS `occupancy`,\n  MEASURE(`adr`) AS `adr`,\n  MEASURE(`revpar`) AS `revpar`,\n  MEASURE(`comp_revpar`) AS `comp_revpar`,\n  MEASURE(`rgi`) AS `rgi`\nFROM `jdub_demo`.`wyndham`.`mv_str_compset`\nWHERE `state` IS NOT NULL\n  AND `brand` IS NOT NULL\n  AND `state` IN ('FL', 'TX', 'LA', 'MS', 'AL')\n  AND `week_start` BETWEEN DATE'2026-08-02' AND DATE'2026-09-27'\nGROUP BY ALL\nORDER BY `week_start` ASC, `brand` ASC",
+    "text": "Examples include:\n- **2026-08-02, Echo Suites**: RGI **101.2**, occupancy **64.5%**, ADR **109.67**, RevPAR **70.68** vs comp set **69.84**.\n- **2026-08-02, Esplendor**: RGI **101.1**, occupancy **81.7%**, ADR **296.52**, RevPAR **242.18** vs comp set **239.58**.\n- **2026-08-09, Hawthorn Suites**: RGI **100.5**, occupancy **71.0%**, ADR **145.96**, RevPAR **103.56** vs comp set **103.06**.\n- **2026-08-16, AmericInn**: RGI **100.1**, occupancy **70.3%**, ADR **135.97**, RevPAR **95.54** vs comp set **95.47**.\n- **2026-08-16, Hawthorn Suites**: RGI **100.9**, occupancy **70.9%**, ADR **146.93**, RevPAR **104.13** vs comp set **103.23**.",
+    "rows": [
+      {
+        "week_start": "2026-08-02",
+        "brand": "AmericInn",
+        "occupancy": "0.7011121302453566",
+        "adr": "135.799908",
+        "revpar": "95.210963",
+        "comp_revpar": "95.551030519734",
+        "rgi": "99.644099"
+      },
+      {
+        "week_start": "2026-08-02",
+        "brand": "Baymont",
+        "occupancy": "0.6953351979112595",
+        "adr": "121.291279",
+        "revpar": "84.338096",
+        "comp_revpar": "85.617561541832",
+        "rgi": "98.505604"
+      },
+      {
+        "week_start": "2026-08-02",
+        "brand": "Days Inn",
+        "occupancy": "0.6583287627454621",
+        "adr": "105.352332",
+        "revpar": "69.356470",
+        "comp_revpar": "70.515881954638",
+        "rgi": "98.355814"
+      },
+      {
+        "week_start": "2026-08-02",
+        "brand": "Dolce",
+        "occupancy": "0.7459391019702304",
+        "adr": "341.979013",
+        "revpar": "255.095518",
+        "comp_revpar": "269.278546649875",
+        "rgi": "94.732953"
+      },
+      {
+        "week_start": "2026-08-02",
+        "brand": "Echo Suites",
+        "occupancy": "0.6445225418972436",
+        "adr": "109.667263",
+        "revpar": "70.683023",
+        "comp_revpar": "69.837329912915",
+        "rgi": "101.210947"
+      },
+      {
+        "week_start": "2026-08-02",
+        "brand": "Esplendor",
+        "occupancy": "0.8167375531648736",
+        "adr": "296.524111",
+        "revpar": "242.182377",
+        "comp_revpar": "239.581278615087",
+        "rgi": "101.085685"
+      },
+      {
+        "week_start": "2026-08-02",
+        "brand": "Hawthorn Suites",
+        "occupancy": "0.7079433120461902",
+        "adr": "146.228926",
+        "revpar": "103.521790",
+        "comp_revpar": "103.271527849169",
+        "rgi": "100.242334"
+      },
+      {
+        "week_start": "2026-08-02",
+        "brand": "Howard Johnson",
+        "occupancy": "0.6584238987767103",
+        "adr": "98.326852",
+        "revpar": "64.740749",
+        "comp_revpar": "65.643329843359",
+        "rgi": "98.625023"
+      }
+    ],
+    "description": "You want to see weekly performance metrics for each brand in the Gulf Coast states during August and September 2026.",
+    "row_count": 180
+  },
+  {
+    "model": "str",
+    "prompt": "Show it with brands in rows and weeks in columns",
+    "status": "COMPLETED",
+    "seconds": 21.2,
+    "sql": "SELECT\n  `brand`,\n  MAX(CASE WHEN `week_start` = DATE'2026-08-02' THEN `rgi` END) AS `2026-08-02`,\n  MAX(CASE WHEN `week_start` = DATE'2026-08-09' THEN `rgi` END) AS `2026-08-09`,\n  MAX(CASE WHEN `week_start` = DATE'2026-08-16' THEN `rgi` END) AS `2026-08-16`,\n  MAX(CASE WHEN `week_start` = DATE'2026-08-23' THEN `rgi` END) AS `2026-08-23`,\n  MAX(CASE WHEN `week_start` = DATE'2026-08-30' THEN `rgi` END) AS `2026-08-30`,\n  MAX(CASE WHEN `week_start` = DATE'2026-09-06' THEN `rgi` END) AS `2026-09-06`,\n  MAX(CASE WHEN `week_start` = DATE'2026-09-13' THEN `rgi` END) AS `2026-09-13`,\n  MAX(CASE WHEN `week_start` = DATE'2026-09-20' THEN `rgi` END) AS `2026-09-20`,\n  MAX(CASE WHEN `week_start` = DATE'2026-09-27' THEN `rgi` END) AS `2026-09-27`\nFROM (\n  SELECT\n    `week_start`,\n    `brand`,\n    MEASURE(`rgi`) AS `rgi`\n  FROM `jdub_demo`.`wyndham`.`mv_str_compset`\n  WHERE `state` IS NOT NULL\n    AND `brand` IS NOT NULL\n    AND `week_start` IS NOT NULL\n    AND `state` IN ('FL', 'TX', 'LA', 'MS', 'AL')\n    AND `week_start` BETWEEN DATE'2026-08-02' AND DATE'2026-09-27'\n  GROUP BY ALL\n) `x`\nGROUP BY `brand`\nORDER BY `brand` ASC",
+    "text": "Here is the weekly **RGI by brand** for **Gulf Coast states** for **Aug-Sep 2026**, shown with brands in rows and weeks in columns. Across the **20 brands** shown, the strongest week was **2026-09-06**, when **Days Inn** reached **126.3**, while **Dolce** was the lowest that week at **89.9**; several brands also peaked above **106** in late August to mid-September, including **Travelodge (107.0)**, **Super 8 (106.9)**, and **Echo Suites (112.6)**.",
+    "rows": [
+      {
+        "brand": "AmericInn",
+        "2026-08-02": "99.644099",
+        "2026-08-09": "99.560642",
+        "2026-08-16": "100.073615",
+        "2026-08-23": "98.145250",
+        "2026-08-30": "94.425575",
+        "2026-09-06": "94.210348",
+        "2026-09-13": "96.648090",
+        "2026-09-20": "100.232884",
+        "2026-09-27": "99.384564"
+      },
+      {
+        "brand": "Baymont",
+        "2026-08-02": "98.505604",
+        "2026-08-09": "98.444693",
+        "2026-08-16": "98.241631",
+        "2026-08-23": "97.022837",
+        "2026-08-30": "93.836878",
+        "2026-09-06": "93.367271",
+        "2026-09-13": "95.847013",
+        "2026-09-20": "98.534632",
+        "2026-09-27": "98.448918"
+      },
+      {
+        "brand": "Days Inn",
+        "2026-08-02": "98.355814",
+        "2026-08-09": "98.298033",
+        "2026-08-16": "98.502205",
+        "2026-08-23": "100.154270",
+        "2026-08-30": "104.559470",
+        "2026-09-06": "126.314315",
+        "2026-09-13": "102.016846",
+        "2026-09-20": "98.586238",
+        "2026-09-27": "98.240897"
+      },
+      {
+        "brand": "Dolce",
+        "2026-08-02": "94.732953",
+        "2026-08-09": "95.220249",
+        "2026-08-16": "94.788187",
+        "2026-08-23": "94.394901",
+        "2026-08-30": "90.844953",
+        "2026-09-06": "89.891047",
+        "2026-09-13": "92.372527",
+        "2026-09-20": "95.084312",
+        "2026-09-27": "94.935634"
+      },
+      {
+        "brand": "Echo Suites",
+        "2026-08-02": "101.210947",
+        "2026-08-09": "101.063798",
+        "2026-08-16": "101.250960",
+        "2026-08-23": "104.118797",
+        "2026-08-30": "112.596289",
+        "2026-09-06": "109.769973",
+        "2026-09-13": "105.796592",
+        "2026-09-20": "101.179346",
+        "2026-09-27": "101.481069"
+      },
+      {
+        "brand": "Esplendor",
+        "2026-08-02": "101.085685",
+        "2026-08-09": "99.601591",
+        "2026-08-16": "100.111996",
+        "2026-08-23": "98.995004",
+        "2026-08-30": "100.348508",
+        "2026-09-06": "101.046153",
+        "2026-09-13": "99.359526",
+        "2026-09-20": "98.512982",
+        "2026-09-27": "99.407629"
+      },
+      {
+        "brand": "Hawthorn Suites",
+        "2026-08-02": "100.242334",
+        "2026-08-09": "100.483805",
+        "2026-08-16": "100.877834",
+        "2026-08-23": "98.627892",
+        "2026-08-30": "95.206408",
+        "2026-09-06": "95.443982",
+        "2026-09-13": "97.905792",
+        "2026-09-20": "100.571281",
+        "2026-09-27": "100.225869"
+      },
+      {
+        "brand": "Howard Johnson",
+        "2026-08-02": "98.625023",
+        "2026-08-09": "98.720853",
+        "2026-08-16": "98.735778",
+        "2026-08-23": "101.152940",
+        "2026-08-30": "105.916144",
+        "2026-09-06": "106.075233",
+        "2026-09-13": "102.652924",
+        "2026-09-20": "98.205699",
+        "2026-09-27": "98.092804"
+      }
+    ],
+    "description": "You want to see the weekly Revenue Generation Index (RGI) for different hotel brands in the Gulf Coast states from early August to late September 2026, displayed with brands as rows and each week as a separate column.",
+    "row_count": 20
+  },
+  {
+    "model": "str",
+    "prompt": "Booking channel by STR comp set",
+    "status": "COMPLETED",
+    "seconds": 6.0,
+    "sql": null,
+    "text": "STR reports only aggregate supply, demand and revenue for the comp set, so booking channel, rate plan and IATA do not exist at that grain. For your own properties' channel mix, switch the Data model to NT Performance (daily).",
+    "rows": null
+  },
+  {
+    "model": "str",
+    "prompt": "Which sites had the largest RevPAR index drop vs comp set in the last 8 weeks?",
+    "status": "COMPLETED",
+    "seconds": 20.9,
+    "sql": "WITH `w` AS (\n  SELECT\n    `site_id`,\n    `property_name`,\n    `market`,\n    CASE WHEN `week_start` >= DATE'2026-08-09' THEN 'recent' ELSE 'prior' END AS `period`,\n    MEASURE(`rgi`) AS `rgi`\n  FROM `jdub_demo`.`wyndham`.`mv_str_compset`\n  WHERE `week_start` BETWEEN DATE'2026-06-14' AND DATE'2026-09-27'\n    AND `site_id` IS NOT NULL\n    AND `property_name` IS NOT NULL\n    AND `market` IS NOT NULL\n  GROUP BY ALL\n)\nSELECT\n  `site_id`,\n  `property_name`,\n  `market`,\n  MAX(CASE WHEN `period` = 'prior' THEN `rgi` END) AS `rgi_prior_8wk`,\n  MAX(CASE WHEN `period` = 'recent' THEN `rgi` END) AS `rgi_last_8wk`,\n  MAX(CASE WHEN `period` = 'recent' THEN `rgi` END) - MAX(CASE WHEN `period` = 'prior' THEN `rgi` END) AS `rgi_change`\nFROM `w`\nGROUP BY ALL\nORDER BY `rgi_change` ASC\nLIMIT 15",
+    "text": "Examples include these sites with the largest **RevPAR index** declines versus their comp sets over the last 8 weeks compared with the prior 8 weeks:\n- **La Quinta Inn & Suites by Wyndham Plano** (Dallas): **-13.2** points, from **106.0** to **92.8**\n- **Ramada by Wyndham Phoenix West** (Phoenix): **-10.8** points, from **92.7** to **81.9**\n- **Baymont by Wyndham Columbus North** (Columbus): **-10.0** points, from **88.4** to **78.3**\n- **Baymont by Wyndham New Orleans Downtown** (New Orleans): **-6.8** points, from **102.6** to **95.8**\n- **Hawthorn Suites by Wyndham Gulf Shores East** (Gulf Shores): **-6.2** points, from **98.2** to **92.0**\nAcross all **15** returned sites, every property showed a decline, with drops ranging from **-13.2** to **-5.1** points.",
+    "rows": [
+      {
+        "site_id": "S01188",
+        "property_name": "La Quinta Inn & Suites by Wyndham Plano",
+        "market": "Dallas",
+        "rgi_prior_8wk": "105.982120",
+        "rgi_last_8wk": "92.781440",
+        "rgi_change": "-13.200680"
+      },
+      {
+        "site_id": "S07425",
+        "property_name": "Ramada by Wyndham Phoenix West",
+        "market": "Phoenix",
+        "rgi_prior_8wk": "92.668052",
+        "rgi_last_8wk": "81.856022",
+        "rgi_change": "-10.812030"
+      },
+      {
+        "site_id": "S03391",
+        "property_name": "Baymont by Wyndham Columbus North",
+        "market": "Columbus",
+        "rgi_prior_8wk": "88.364792",
+        "rgi_last_8wk": "78.319807",
+        "rgi_change": "-10.044985"
+      },
+      {
+        "site_id": "S05233",
+        "property_name": "Baymont by Wyndham New Orleans Downtown",
+        "market": "New Orleans",
+        "rgi_prior_8wk": "102.566743",
+        "rgi_last_8wk": "95.804915",
+        "rgi_change": "-6.761828"
+      },
+      {
+        "site_id": "S06162",
+        "property_name": "Hawthorn Suites by Wyndham Gulf Shores East",
+        "market": "Gulf Shores",
+        "rgi_prior_8wk": "98.165407",
+        "rgi_last_8wk": "91.971286",
+        "rgi_change": "-6.194121"
+      },
+      {
+        "site_id": "S02467",
+        "property_name": "Wingate by Wyndham Tampa Convention Center",
+        "market": "Tampa / St Petersburg",
+        "rgi_prior_8wk": "96.380791",
+        "rgi_last_8wk": "90.595360",
+        "rgi_change": "-5.785431"
+      },
+      {
+        "site_id": "S06530",
+        "property_name": "La Quinta Inn & Suites by Wyndham Gulf Shores Downtown",
+        "market": "Gulf Shores",
+        "rgi_prior_8wk": "111.984298",
+        "rgi_last_8wk": "106.369331",
+        "rgi_change": "-5.614967"
+      },
+      {
+        "site_id": "S03559",
+        "property_name": "La Quinta Inn & Suites by Wyndham Miami North",
+        "market": "Miami",
+        "rgi_prior_8wk": "101.155912",
+        "rgi_last_8wk": "95.830287",
+        "rgi_change": "-5.325625"
+      }
+    ],
+    "description": "You want to see the top 15 sites that experienced the largest drop in their RevPAR index compared to their competitive set over the last 8 weeks, with a comparison to the prior 8-week period. The results include each site's ID, property name, market, the RevPAR index for the prior 8 weeks, the RevPAR index for the recent 8 weeks, and the change between these two periods, sorted by the biggest decline.",
+    "row_count": 15
+  },
+  {
+    "model": "nt",
+    "prompt": "Anything that looks like a data issue in September?",
+    "status": "COMPLETED",
+    "seconds": 18.2,
+    "sql": "SELECT a.anomaly_type, a.severity, a.site_id, a.property_name, a.market, a.start_date, a.end_date, a.description\nFROM jdub_demo.wyndham.anomaly_site_day a\nWHERE a.category = 'data_quality' AND a.start_date <= DATE'2026-09-30' AND a.end_date >= DATE'2026-09-01'\nORDER BY CASE a.severity WHEN 'high' THEN 1 WHEN 'medium' THEN 2 ELSE 3 END, a.start_date",
+    "text": "Yes, **3 data quality issues** overlap with September 2026. They include **Days Inn by Wyndham Gulfport** with an implausible one-night room revenue of **$2,100,005** on **2026-09-12**, **Super 8 by Wyndham Lafayette** with rooms sold exceeding available rooms (**112 vs 96**) from **2026-09-14 to 2026-09-20**, and a **missing NT data** issue affecting **43 sites** from **2026-09-09 to 2026-09-13**; the September issues include both property-level errors and a broader feed gap.",
+    "rows": [
+      {
+        "anomaly_type": "implausible_value",
+        "severity": "high",
+        "site_id": "S04217",
+        "property_name": "Days Inn by Wyndham Gulfport",
+        "market": "Biloxi-Gulfport",
+        "start_date": "2026-09-12",
+        "end_date": "2026-09-12",
+        "description": "Implausible room revenue of $2,100,005 on one night (site p99 is $7,541)"
+      },
+      {
+        "anomaly_type": "capacity_violation",
+        "severity": "high",
+        "site_id": "S02750",
+        "property_name": "Super 8 by Wyndham Lafayette",
+        "market": "Lafayette",
+        "start_date": "2026-09-14",
+        "end_date": "2026-09-20",
+        "description": "Rooms sold exceed rooms available (112 / 96)"
+      },
+      {
+        "anomaly_type": "missing_data",
+        "severity": "medium",
+        "site_id": "",
+        "property_name": "",
+        "market": "Tampa / St Petersburg",
+        "start_date": "2026-09-09",
+        "end_date": "2026-09-13",
+        "description": "NT missing for 5 days across 43 sites"
+      }
+    ],
+    "description": "You want to see any detected data quality issues that occurred during September 2026, including their type, severity, affected site, and description.",
+    "row_count": 3
+  },
+  {
+    "model": "nt",
+    "prompt": "Show reservations driving pickup at S05512 for Sep 1-15 2026 with channel and travel agent",
+    "status": "COMPLETED",
+    "seconds": 13.4,
+    "sql": "SELECT `confirmation_number`, `booking_date`, `arrival_date`, `nights`, `rooms`, `channel`, `travel_agent_iata`, `rate_plan`, `room_revenue`\nFROM `jdub_demo`.`wyndham`.`fact_reservation`\nWHERE `site_id` = 'S05512'\n  AND `arrival_date` BETWEEN DATE'2026-09-01' AND DATE'2026-09-15'\n  AND `status` <> 'Cancelled'\nORDER BY `booking_date`\nLIMIT 500",
+    "text": "Examples include:\n- **Group** bookings include arrivals on **2026-09-01 to 2026-09-04**, such as **4 rooms for 6 nights** with **$2,167.49** in revenue and **5 rooms for 4 nights** with **$1,878.35**.\n- **GDS/Travel Agent** bookings show travel agent IDs including **49-3 0841**, **22-6 1450**, **32-5 1435**, and **35-5 5526**.\n- Other channels in the reservations shown include **OTA-Expedia**, **OTA-Booking**, **Call Center**, and **Brand.com**.\n- Rate plans shown include **Group**, **Gov**, **Wyndham Rewards**, **BAR**, **AAA**, **Corporate**, and **Package**.\n- Booking dates in the reservations shown run from **2026-08-26** to **2026-08-29**.",
+    "rows": [
+      {
+        "confirmation_number": "WYJ3M1I110ZO",
+        "booking_date": "2026-08-26",
+        "arrival_date": "2026-09-01",
+        "nights": "3",
+        "rooms": "4",
+        "channel": "Group",
+        "travel_agent_iata": "",
+        "rate_plan": "Group",
+        "room_revenue": "1083.74"
+      },
+      {
+        "confirmation_number": "WY4ETP8IOZD0",
+        "booking_date": "2026-08-26",
+        "arrival_date": "2026-09-01",
+        "nights": "4",
+        "rooms": "4",
+        "channel": "Group",
+        "travel_agent_iata": "",
+        "rate_plan": "Group",
+        "room_revenue": "1444.99"
+      },
+      {
+        "confirmation_number": "WY6ROPQYZANV",
+        "booking_date": "2026-08-26",
+        "arrival_date": "2026-09-01",
+        "nights": "7",
+        "rooms": "1",
+        "channel": "OTA-Expedia",
+        "travel_agent_iata": "",
+        "rate_plan": "Wyndham Rewards",
+        "room_revenue": "766.06"
+      },
+      {
+        "confirmation_number": "WYA25LUGZ1PY",
+        "booking_date": "2026-08-26",
+        "arrival_date": "2026-09-01",
+        "nights": "3",
+        "rooms": "1",
+        "channel": "Group",
+        "travel_agent_iata": "",
+        "rate_plan": "Group",
+        "room_revenue": "270.94"
+      },
+      {
+        "confirmation_number": "WY5C5QULN1IX",
+        "booking_date": "2026-08-26",
+        "arrival_date": "2026-09-01",
+        "nights": "4",
+        "rooms": "1",
+        "channel": "OTA-Booking",
+        "travel_agent_iata": "",
+        "rate_plan": "Wyndham Rewards",
+        "room_revenue": "437.75"
+      },
+      {
+        "confirmation_number": "WYHX55LI3Z1S",
+        "booking_date": "2026-08-26",
+        "arrival_date": "2026-09-01",
+        "nights": "3",
+        "rooms": "6",
+        "channel": "Group",
+        "travel_agent_iata": "",
+        "rate_plan": "Group",
+        "room_revenue": "1625.62"
+      },
+      {
+        "confirmation_number": "WYRUX8WDD3RQ",
+        "booking_date": "2026-08-26",
+        "arrival_date": "2026-09-01",
+        "nights": "3",
+        "rooms": "6",
+        "channel": "Group",
+        "travel_agent_iata": "",
+        "rate_plan": "Group",
+        "room_revenue": "1625.62"
+      },
+      {
+        "confirmation_number": "WYBCSRGYRQEL",
+        "booking_date": "2026-08-26",
+        "arrival_date": "2026-09-01",
+        "nights": "3",
+        "rooms": "1",
+        "channel": "GDS/Travel Agent",
+        "travel_agent_iata": "49-3 0841",
+        "rate_plan": "Gov",
+        "room_revenue": "318.75"
+      }
+    ],
+    "description": "You want to see the reservations that contribute to the pickup at site S05512 for the period from September 1 to September 15, 2026, including details about the booking channel and travel agent.",
+    "row_count": 500
+  },
+  {
+    "model": "nt",
+    "prompt": "Pickup by channel for that site, booking date by week",
+    "status": "COMPLETED",
+    "seconds": 18.3,
+    "sql": "SELECT date_sub(`booking_date`, dayofweek(`booking_date`) - 1) AS `booking_week`, `channel`, COUNT(*) AS `reservations`, SUM(`rooms` * `nights`) AS `room_nights`, SUM(`room_revenue`) AS `revenue`\nFROM `jdub_demo`.`wyndham`.`fact_reservation`\nWHERE `site_id` = 'S05512'\n  AND `arrival_date` BETWEEN DATE'2026-09-01' AND DATE'2026-09-15'\n  AND `status` <> 'Cancelled'\n  AND `booking_date` IS NOT NULL\n  AND `channel` IS NOT NULL\nGROUP BY ALL\nORDER BY `booking_week` ASC, `reservations` DESC",
+    "text": "For **S05512**, pickup for arrivals **Sep 1 to Sep 15, 2026** was led by **Group** bookings in every booking week shown, with the biggest volume in the week of **2026-08-30** at **98 reservations**, **1,441 room nights**, and **$130,556.69** in revenue. Across the 4 booking weeks in the results, activity peaked in the weeks of **2026-08-30** and **2026-09-06**, and **Group** was consistently the largest channel by reservations, room nights, and revenue.\n\nExamples include:\n- Week of **2026-08-23**: **Group** led with **18 reservations**, **249 room nights**, **$22,689.32**\n- Week of **2026-08-30**: **Group** led with **98 reservations**, **1,441 room nights**, **$130,556.69**\n- Week of **2026-09-06**: **Group** led with **92 reservations**, **1,380 room nights**, **$125,545.27**\n- Week of **2026-09-13**: **Group** led with **12 reservations**, **195 room nights**, **$17,712.96**\n- In the week of **2026-08-30**, the next largest channel by reservations was **OTA-Booking** with **43 reservations** and **$21,677.29** in revenue",
+    "rows": [
+      {
+        "booking_week": "2026-08-23",
+        "channel": "Group",
+        "reservations": "18",
+        "room_nights": "249",
+        "revenue": "22689.32"
+      },
+      {
+        "booking_week": "2026-08-23",
+        "channel": "OTA-Booking",
+        "reservations": "10",
+        "room_nights": "42",
+        "revenue": "4681.06"
+      },
+      {
+        "booking_week": "2026-08-23",
+        "channel": "GDS/Travel Agent",
+        "reservations": "7",
+        "room_nights": "26",
+        "revenue": "2780.55"
+      },
+      {
+        "booking_week": "2026-08-23",
+        "channel": "OTA-Expedia",
+        "reservations": "6",
+        "room_nights": "29",
+        "revenue": "3184.29"
+      },
+      {
+        "booking_week": "2026-08-23",
+        "channel": "Call Center",
+        "reservations": "5",
+        "room_nights": "23",
+        "revenue": "2486.94"
+      },
+      {
+        "booking_week": "2026-08-23",
+        "channel": "Brand.com",
+        "reservations": "5",
+        "room_nights": "21",
+        "revenue": "2253.00"
+      },
+      {
+        "booking_week": "2026-08-30",
+        "channel": "Group",
+        "reservations": "98",
+        "room_nights": "1441",
+        "revenue": "130556.69"
+      },
+      {
+        "booking_week": "2026-08-30",
+        "channel": "OTA-Booking",
+        "reservations": "43",
+        "room_nights": "198",
+        "revenue": "21677.29"
+      }
+    ],
+    "description": "You want to see the weekly booking activity by channel for site S05512 for arrivals between September 1 and 15, 2026.",
+    "row_count": 24
+  }
+]

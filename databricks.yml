@@ -1,0 +1,69 @@
+# RevSight IQ as a Declarative Automation Bundle (DAB): the app, both Genie spaces and a grant job.
+# This path reads databricks.yml and --var flags, NOT config.env (config.env is for the
+# workspace_deploy notebook and the laptop scripts).
+#
+# First time on a schema without the demo data, build it with the small data bundle in setup/
+# (Genie can't create a space until its tables exist):
+#   (cd setup && databricks bundle deploy $V && databricks bundle run build_data $V)
+# Then, from the repo root:
+#   databricks bundle validate --strict $V
+#   databricks bundle deploy $V
+#   databricks bundle run grant_app_access $V   # schema grants for the app's service principal
+#   databricks bundle run revsight $V           # deploy the app code, prints the URL
+# where V="--var catalog=my_catalog --var schema=my_schema --var warehouse_id=<id> --var app_name=<unique-name>"
+bundle:
+  name: wyndham-revsight
+
+include:
+  - resources/*.yml
+
+# Upload only what the bundle needs. The app folder must not carry package.json or the
+# frontend sources: the Apps runtime would try a Node build and time out. The built UI
+# (app/frontend/dist) is committed, so it uploads.
+sync:
+  exclude:
+    - docs/**
+    - setup/databricks.yml
+    - setup/sql/**
+    - setup/genie/**
+    - app/app.yaml
+    - app/frontend/src/**
+    - app/frontend/public/**
+    - app/frontend/index.html
+    - app/frontend/package.json
+    - app/frontend/package-lock.json
+    - app/frontend/tsconfig*.json
+    - app/frontend/vite.config.ts
+    - app/frontend/postcss.config.js
+    - app/frontend/tailwind.config.js
+
+variables:
+  catalog:
+    description: Catalog for the demo tables (you need USE CATALOG on it)
+    default: jdub_demo
+  schema:
+    description: Existing schema you can create tables in (bundles never create it)
+    default: wyndham
+  warehouse_id:
+    description: SQL warehouse for Genie, the app and the grant job (serverless recommended)
+    default: c02d7ad10080ab8d
+  app_name:
+    description: App name (lowercase letters, numbers, dashes; 30 characters max; unique in the workspace). Development mode does NOT prefix app names.
+    default: wyndham-revsight-dab
+
+targets:
+  # Uses your default CLI profile (or pass -p <profile>). Development mode prefixes the job and Genie titles with [dev <you>]
+  # but not the app name, so app_name defaults to wyndham-revsight-dab (not the live wyndham-revsight).
+  dev:
+    mode: development
+    default: true
+
+  # Your own workspace: copy this block, uncomment it, fill it in, then add `-t mine` to every command.
+  # mine:
+  #   mode: development
+  #   workspace:
+  #     host: https://<your-workspace>.cloud.databricks.com
+  #   variables:
+  #     catalog: my_catalog
+  #     schema: my_schema
+  #     warehouse_id: 0123456789abcdef

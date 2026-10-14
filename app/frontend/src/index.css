@@ -1,0 +1,96 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-white text-text-primary antialiased;
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-surface-secondary;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400;
+}
+
+/* Focus styles */
+*:focus-visible {
+  @apply outline-none ring-2 ring-wyndham-blue ring-offset-2;
+}
+
+/* Card hover effect */
+.card-hover {
+  @apply transition-all duration-300 ease-out;
+}
+
+.card-hover:hover {
+  @apply shadow-medium -translate-y-0.5;
+}
+
+/* Glass effect */
+.glass {
+  @apply bg-white/80 backdrop-blur-md;
+}
+
+/* Gradient text */
+.gradient-text {
+  @apply bg-gradient-to-r from-wyndham-blue to-wyndham-blue-light bg-clip-text text-transparent;
+}
+
+/* Wyndham brand gradient */
+.wyndham-gradient {
+  background: linear-gradient(135deg, #016fb7 0%, #2b93d6 100%);
+}
+
+/* Navy accent gradient */
+.yellow-gradient {
+  background: linear-gradient(135deg, #0d2c54 0%, #016fb7 100%);
+}
+
+/* Animation utilities */
+.stagger-1 { animation-delay: 0.1s; }
+.stagger-2 { animation-delay: 0.2s; }
+.stagger-3 { animation-delay: 0.3s; }
+.stagger-4 { animation-delay: 0.4s; }
+.stagger-5 { animation-delay: 0.5s; }
+
+/* Number formatting */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Map container */
+.map-container {
+  @apply w-full h-full rounded-2xl overflow-hidden;
+}
+
+/* Chart tooltip */
+.recharts-tooltip-wrapper {
+  @apply !outline-none;
+}
+
+.custom-tooltip {
+  @apply bg-white/95 backdrop-blur-sm rounded-xl shadow-medium p-3 border border-gray-100;
+}
+
+
+
+
+

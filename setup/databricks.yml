@@ -1,0 +1,54 @@
+# RevSight IQ demo data as a small bundle of its own. Deploy and run it ONCE, from this folder,
+# before the main bundle at the repo root: Genie can't create a space until its tables exist.
+#
+#   cd setup
+#   databricks bundle deploy --var catalog=my_catalog --var schema=my_schema --var warehouse_id=<id>
+#   databricks bundle run build_data (same --var flags)
+bundle:
+  name: wyndham-revsight-data
+
+variables:
+  catalog:
+    description: Catalog for the demo tables (you need USE CATALOG on it)
+    default: jdub_demo
+  schema:
+    description: Existing schema you can create tables in (bundles never create it)
+    default: wyndham
+  warehouse_id:
+    description: SQL warehouse that runs the build (serverless recommended)
+    default: c02d7ad10080ab8d
+  data_start:
+    description: First day of demo history; 2019-01-01 builds 556M reservations, later is faster (keep it on or before 2025-09-01)
+    default: "2019-01-01"
+  data_mode:
+    description: "auto: build only if tables are missing, rebuild: always, skip: never"
+    default: auto
+
+resources:
+  jobs:
+    build_data:
+      name: revsight-build-data
+      description: Build the RevSight IQ demo tables and metric views (serverless)
+      parameters:
+        - {name: catalog, default: "${var.catalog}"}
+        - {name: schema, default: "${var.schema}"}
+        - {name: warehouse_id, default: "${var.warehouse_id}"}
+        - {name: data_start, default: "${var.data_start}"}
+        - {name: data_mode, default: "${var.data_mode}"}
+      tasks:
+        - task_key: build_data
+          notebook_task:
+            notebook_path: ./jobs/build_data.py
+
+targets:
+  dev:
+    mode: development
+    default: true
+  # mine:
+  #   mode: development
+  #   workspace:
+  #     host: https://<your-workspace>.cloud.databricks.com
+  #   variables:
+  #     catalog: my_catalog
+  #     schema: my_schema
+  #     warehouse_id: 0123456789abcdef
