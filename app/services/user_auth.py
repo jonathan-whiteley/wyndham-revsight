@@ -22,7 +22,7 @@ IN_APPS = bool(os.getenv("DATABRICKS_APP_NAME"))
 
 
 class NoUserToken(Exception):
-    """In Databricks Apps without a forwarded user token: user authorization is off or the app has no scopes."""
+    """In Databricks Apps without a forwarded user token: the app has no user_api_scopes, or the workspace allowlist removed them."""
 
 
 def set_request_user(token: Optional[str], user: Optional[str]) -> None:
@@ -49,8 +49,8 @@ def user_token() -> Optional[str]:
     """The viewer's token in Apps; None locally (use the CLI profile)."""
     token = _token.get()
     if IN_APPS and not token:
-        raise NoUserToken("No user token: turn on user authorization for Databricks Apps and give the app its "
-                          "user_api_scopes (see the README), then reload the page.")
+        raise NoUserToken("No user token: give the app its user_api_scopes (scripts/create_app.sh or the notebook's step 5) "
+                          "and check the workspace allows them (Settings > Development > Apps), then reload.")
     return token
 
 

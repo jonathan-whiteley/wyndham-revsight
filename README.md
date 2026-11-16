@@ -68,7 +68,7 @@ flowchart LR
 | 💻 | **[Option B: From your laptop](#option-b)** | Developers changing the code | Databricks CLI, Node 18+, Python 3.11+, `zsh` |
 | 📦 | **[Option C: Declarative Automation Bundles](#option-c)** | Teams that deploy the demo with DABs or CI | Databricks CLI (bundles) |
 
-**Before any path:** a workspace admin turns on **user authorization for Databricks Apps** (once per workspace), and you **read [Deploy to your own workspace](#deploy-your-own)**: the committed `config.env` and the `databricks.yml` defaults point at the reference demo, not at your schema.
+**Before any path:** **read [Deploy to your own workspace](#deploy-your-own)**: the committed `config.env` and the `databricks.yml` defaults point at the reference demo, not at your schema. User authorization for Databricks Apps is generally available and on by default; if a workspace admin has narrowed the app scope allowlist (**Settings > Development > Apps**), it must still include `genie`, `sql` and `catalog.tables:read`.
 
 <a id="option-a"></a>
 
@@ -245,7 +245,7 @@ Everything else follows from these values: the SQL in `setup/sql/` uses `{{catal
 
 | Who | Needs | Why |
 |---|---|---|
-| **A workspace admin** (once) | Turn on user authorization for Databricks Apps | Lets the app act as each viewer |
+| **A workspace admin** (only if the workspace restricts app scopes) | Keep `genie`, `sql` and `catalog.tables:read` on the allowlist under **Settings > Development > Apps** | The default allows all scopes; `None` turns user authorization off |
 | **You** (the person deploying) | Access to Databricks Apps in the workspace | Create the app |
 | | Demo only: `USE CATALOG` on `UC_CATALOG`, `USE SCHEMA` and `CREATE TABLE` on the schema, `CAN USE` on the warehouse, access to Genie | Build the tables and metric views, create the two agents |
 | | Your own agents: at least `CAN VIEW` on each agent and visibility of its metric view | The notebook preflight opens them as you |
@@ -324,8 +324,8 @@ set -a; source config.env; set +a; python3 setup/genie/acceptance.py
 
 | Symptom | Fix |
 |---|---|
-| `401` and "No user token" from every API call | User authorization is off, or the app has no scopes. Ask a workspace admin to turn it on, then re-run `scripts/create_app.sh` or the notebook's step 5. |
-| Deploy fails with `user token passthrough not enabled` | Same cause: user authorization is off in the workspace. |
+| `401` and "No user token" from every API call | The app has no `user_api_scopes`, or the workspace allowlist removed them. Re-run `scripts/create_app.sh` or the notebook's step 5, and have a workspace admin check **Settings > Development > Apps**. |
+| Setting the scopes fails, or deploy fails with `user token passthrough not enabled` | The workspace's app scope allowlist doesn't include them (or is set to `None`). A workspace admin adds `genie`, `sql` and `catalog.tables:read` under **Settings > Development > Apps**. |
 | `does not have required scopes: genie` (or `unity-catalog`), or a `403` on `OpenSession` | The viewer approved the app before its scopes changed, so their token is stale. Have them open the app in a fresh browser session (or sign out of the app) and click **Authorize** again. Use `genie`, not the deprecated `dashboards.genie`. |
 | Sign-in loops back with `access_denied` and `Scopes 'sql:read:restricted-query' are not assigned` | `sql:read` and `sql:restricted-query` can't be combined. Keep the scopes in `setup/user_api_scopes.json`. |
 | Agent picker shows "You can't open this Genie agent yet" | The viewer needs at least `CAN VIEW` on the agent. No redeploy needed. |

@@ -76,8 +76,8 @@ def ensure_app(w, name, description="RevSight IQ: Genie revenue explorer on UC m
             body={"update_mask": "user_api_scopes,resources", "app": {"user_api_scopes": USER_API_SCOPES, "resources": []}})
     except Exception as e:
         if "passthrough" in str(e).lower():
-            raise RuntimeError("User authorization is off in this workspace. Ask a workspace admin to turn on "
-                               "Databricks Apps user authorization (Previews), then re-run.") from e
+            raise RuntimeError("This workspace doesn't allow user authorization scopes for apps. Ask a workspace admin to "
+                               f"allow {', '.join(USER_API_SCOPES)} under Settings > Development > Apps, then re-run.") from e
         raise
     for _ in range(60):  # the update is asynchronous
         u = api("GET", f"/api/2.0/apps/{name}/update")

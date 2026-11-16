@@ -70,8 +70,8 @@ async def forward_user(request: Request, call_next):
     token = request.headers.get("x-forwarded-access-token")
     if user_auth.IN_APPS and not token and request.url.path.startswith("/api/") and request.url.path != "/api/health":
         # Never fall back to the app's service principal: it has no grants by design.
-        return JSONResponse(status_code=401, content={"detail": "No user token. Turn on user authorization for Databricks Apps "
-                                                                "and give the app its user_api_scopes (see the README), then reload."})
+        return JSONResponse(status_code=401, content={"detail": "No user token. Give the app its user_api_scopes (see the README) and "
+                                                                "check the workspace allows them (Settings > Development > Apps), then reload."})
     user_auth.set_request_user(token, request.headers.get("x-forwarded-email") or request.headers.get("x-forwarded-user"))
     return await call_next(request)
 
