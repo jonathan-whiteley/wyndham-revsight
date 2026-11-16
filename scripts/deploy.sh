@@ -9,10 +9,10 @@ source "${0:A:h}/_config.sh"
 APP=$ROOT/app
 STAGE=$(mktemp -d)
 (cd "$APP/frontend" && npm run build >/dev/null)
-rsync -a --exclude '__pycache__' "$APP/main.py" "$APP/requirements.txt" "$APP/api" "$APP/services" "$APP/config" "$STAGE/"
+rsync -a --exclude '__pycache__' "$APP/main.py" "$APP/requirements.txt" "$APP/agents.yaml" "$APP/api" "$APP/services" "$APP/config" "$STAGE/"
 mkdir -p "$STAGE/frontend" && rsync -a "$APP/frontend/dist" "$STAGE/frontend/"
-# app.yaml gets the catalog and schema from config.env
-sed -e "s/\"{{UC_CATALOG}}\"/\"$UC_CATALOG\"/" -e "s/\"{{UC_SCHEMA}}\"/\"$UC_SCHEMA\"/" "$APP/app.yaml" > "$STAGE/app.yaml"
+# app.yaml: each "{{KEY}}" filled from config.env (they feed the ${VAR}s in agents.yaml)
+python3 -c "import os,sys; sys.path.insert(0, '$ROOT/setup'); import deploy_lib as d; print(d.render_app_yaml(open('$APP/app.yaml').read(), os.environ), end='')" > "$STAGE/app.yaml"
 if [[ ${1:-} == --stage ]]; then echo "$STAGE"; exit 0; fi
 
 WS=$(app_path)

@@ -1,16 +1,16 @@
-# Databricks App: RevSight IQ (Wyndham revenue analytics demo on synthetic data)
-# Resources (warehouse + both Genie spaces) are bound on the app object by
-# scripts/bind_resources.sh; app.yaml only maps them to env.
-# {{UC_CATALOG}} and {{UC_SCHEMA}} are filled from config.env by scripts/deploy.sh.
+# Databricks App: RevSight IQ. Template: scripts/deploy.sh and the workspace_deploy notebook replace each
+# "{{KEY}}" with KEY from config.env. These env values only fill the ${VAR}s in agents.yaml; if your
+# agents.yaml has literal IDs, they're unused. No app resources: the app runs as each viewer (user
+# authorization), so its service principal needs no access to the warehouse or the Genie agents.
 command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 env:
-  - name: DATABRICKS_WAREHOUSE_ID
-    valueFrom: sql_warehouse
+  - name: WAREHOUSE_ID
+    value: "{{WAREHOUSE_ID}}"
   - name: GENIE_SPACE_NT
-    valueFrom: genie_space_nt
+    value: "{{GENIE_SPACE_NT}}"
   - name: GENIE_SPACE_STR
-    valueFrom: genie_space_str
+    value: "{{GENIE_SPACE_STR}}"
   - name: UC_CATALOG
     value: "{{UC_CATALOG}}"
   - name: UC_SCHEMA

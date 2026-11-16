@@ -48,9 +48,11 @@ function defaultSpec(cols: { name: string; type: string }[]): PivotSpec {
   const dateCol = cols.find((_, i) => kinds[i] === 'date' || cols[i].name === 'year');
   const textCols = cols.filter((c, i) => kinds[i] === 'text' && c !== dateCol);
   const measure = cols.find((c, i) => isNumericKind(kinds[i]) && !/^(year|quarter)$/.test(c.name));
+  const rows = textCols.slice(0, 2).map(c => c.name);
   return {
-    rows: textCols.slice(0, 2).map(c => c.name),
-    cols: dateCol ? [dateCol.name] : [],
+    // A plain trend (date + measure) pivots by date down the rows; otherwise dates go across.
+    rows: rows.length ? rows : dateCol ? [dateCol.name] : [],
+    cols: rows.length && dateCol ? [dateCol.name] : [],
     values: measure ? [measure.name] : [],
     agg: /(rgi|mpi|ari|revpar|adr|occupancy)/.test(measure?.name || '') ? 'avg' : 'sum',
   };
@@ -85,6 +87,8 @@ export default function PivotPanel({ turn, fields, busy: genieBusy, placements, 
   const table = useMemo(() => (r ? buildPivot(columns.map(c => c.name), r.rows, spec) : null), [r, spec, columns]);
   const used = new Set([...spec.rows, ...spec.cols, ...spec.values]);
   const valueKind = columnKind(spec.values[0] || '');
+  // Row labels: dates as Oct 4, 2026 and booleans as Yes/No, like the result table.
+  const rowKinds = spec.rows.map(n => columnKind(n, columns.find(c => c.name === n)?.type));
 
   const add = (zone: Zone, name: string) => {
     if (!columns.some(c => c.name === name)) return;
@@ -213,7 +217,7 @@ export default function PivotPanel({ turn, fields, busy: genieBusy, placements, 
                     <tr key={j}>
                       {row.map((v, k) => (
                         <td key={k} className={`px-2 py-1.5 whitespace-nowrap ${k < table.rowFieldCount ? '' : 'text-right tabular-nums'}`}>
-                          {k < table.rowFieldCount ? v : formatValue(v, valueKind)}
+                          {k < table.rowFieldCount ? formatValue(v, rowKinds[k]) : formatValue(v, valueKind)}
                         </td>
                       ))}
                     </tr>

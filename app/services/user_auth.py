@@ -1,67 +1,76 @@
 """On-behalf-of-user auth: every Databricks call runs as the signed-in user.
 
-With user authorization on, Databricks Apps forwards the viewer's token in
-x-forwarded-access-token, limited to the scopes declared on the app (sql,
-genie). Without that header (OBO off in the workspace, or a local
-run), calls fall back to the default SDK config: the app's service principal
-in Apps, your CLI profile locally.
+In Databricks Apps the viewer's token arrives in x-forwarded-access-token, limited to the
+app's user_api_scopes. The app's service principal is never used for data, Genie or metadata,
+so it needs no grants. Locally (no DATABRICKS_APP_NAME) calls use your CLI profile.
 """
 
-import logging
+import hashlib
+import os
 from contextvars import ContextVar
 from typing import Optional
 
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.core import Config
 
-logger = logging.getLogger(__name__)
-
 _token: ContextVar[Optional[str]] = ContextVar("user_token", default=None)
 _user: ContextVar[Optional[str]] = ContextVar("user_name", default=None)
-_default_cfg: Optional[Config] = None
-_default_client: Optional[WorkspaceClient] = None
-_warned = False
+_local_cfg: Optional[Config] = None
+_local_client: Optional[WorkspaceClient] = None
+
+IN_APPS = bool(os.getenv("DATABRICKS_APP_NAME"))
+
+
+class NoUserToken(Exception):
+    """In Databricks Apps without a forwarded user token: user authorization is off or the app has no scopes."""
 
 
 def set_request_user(token: Optional[str], user: Optional[str]) -> None:
     """Called once per request by the middleware in main.py."""
-    global _warned
     _token.set(token or None)
     _user.set(user or None)
-    if not token and user and not _warned:
-        # A forwarded user without a token means the app runs in Apps but OBO is off.
-        logger.warning("No x-forwarded-access-token: running as the app's service principal. "
-                       "Enable user authorization and add user_api_scopes to run as the viewer.")
-        _warned = True
 
 
-def default_config() -> Config:
-    global _default_cfg
-    if _default_cfg is None:
-        _default_cfg = Config()
-    return _default_cfg
+def _local_config() -> Config:
+    global _local_cfg
+    if _local_cfg is None:
+        _local_cfg = Config()
+    return _local_cfg
 
 
 def host() -> str:
-    return default_config().host
+    if IN_APPS:
+        h = os.environ["DATABRICKS_HOST"]
+        return h if h.startswith("http") else f"https://{h}"
+    return _local_config().host
 
 
 def user_token() -> Optional[str]:
-    return _token.get()
+    """The viewer's token in Apps; None locally (use the CLI profile)."""
+    token = _token.get()
+    if IN_APPS and not token:
+        raise NoUserToken("No user token: turn on user authorization for Databricks Apps and give the app its "
+                          "user_api_scopes (see the README), then reload the page.")
+    return token
 
 
 def cache_key() -> str:
-    """Partition per-user caches so one viewer never sees another's results."""
-    return _user.get() or "app"
+    """Partitions per-user caches so one viewer never sees another's results."""
+    token = _token.get()
+    return _user.get() or (hashlib.sha256(token.encode()).hexdigest()[:16] if token else "local")
+
+
+def local_config() -> Config:
+    return _local_config()
 
 
 def workspace_client() -> WorkspaceClient:
-    """Client for the current viewer, or the default identity when no token was forwarded."""
-    token = _token.get()
+    """Client for the current viewer (Apps) or your CLI profile (local)."""
+    token = user_token()
     if token:
         # auth_type pins PAT auth: the app's DATABRICKS_CLIENT_ID/SECRET env would otherwise also match.
         return WorkspaceClient(host=host(), token=token, auth_type="pat")
-    global _default_client
-    if _default_client is None:
-        _default_client = WorkspaceClient(config=default_config())
-    return _default_client
+    global _local_client
+    if _local_client is None:
+        _local_client = WorkspaceClient(config=_local_config())
+    return _local_client

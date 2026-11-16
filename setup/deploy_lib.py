@@ -55,25 +55,70 @@ def build_data(w, warehouse_id, catalog, schema, data_start="2019-01-01", mode="
     return True
 
 
-def grant_app_access(w, warehouse_id, catalog, schema, sp, genie_space_ids=()):
-    """USE CATALOG, USE SCHEMA, SELECT for the app SP, and CAN_RUN on each Genie space.
-    Returns the GRANT statements that failed (to send to the schema owner)."""
-    grants = [f"GRANT USE CATALOG ON CATALOG `{catalog}` TO `{sp}`",
-              f"GRANT USE SCHEMA, SELECT ON SCHEMA `{catalog}`.`{schema}` TO `{sp}`"]
-    for_owner = []
-    for g in grants:
+# ---- App: user authorization only, no resources -------------------------------------------------
+
+USER_API_SCOPES = __import__("json").loads((Path(__file__).resolve().parent / "user_api_scopes.json").read_text())
+
+
+def ensure_app(w, name, description="RevSight IQ: Genie revenue explorer on UC metric views"):
+    """Create the app if needed, then set its user_api_scopes and detach any resources (update_mask: only those fields).
+    Returns the app. The app's service principal ends up with no grants from this app."""
+    api = w.api_client.do
+    try:
+        api("GET", f"/api/2.0/apps/{name}")
+    except Exception as e:
+        if "does not exist" not in str(e) and "NOT_FOUND" not in str(e) and "404" not in str(e):
+            raise
+        print(f"Creating app {name} ...")
+        api("POST", "/api/2.0/apps", body={"name": name, "description": description, "user_api_scopes": USER_API_SCOPES})
+    try:
+        api("POST", f"/api/2.0/apps/{name}/update",
+            body={"update_mask": "user_api_scopes,resources", "app": {"user_api_scopes": USER_API_SCOPES, "resources": []}})
+    except Exception as e:
+        if "passthrough" in str(e).lower():
+            raise RuntimeError("User authorization is off in this workspace. Ask a workspace admin to turn on "
+                               "Databricks Apps user authorization (Previews), then re-run.") from e
+        raise
+    for _ in range(60):  # the update is asynchronous
+        u = api("GET", f"/api/2.0/apps/{name}/update")
+        if (u.get("status") or {}).get("state") not in ("IN_PROGRESS", "PENDING", None):
+            break
+        time.sleep(5)
+    return api("GET", f"/api/2.0/apps/{name}")
+
+
+def render_app_yaml(text, cfg):
+    """Fill each "{{KEY}}" in app/app.yaml with KEY from config.env (empty if unset)."""
+    import re
+    return re.sub(r"\{\{([A-Z_][A-Z0-9_]*)\}\}", lambda m: cfg.get(m.group(1), ""), text)
+
+
+def check_agents(w, agents_file, cfg):
+    """Preflight for agents.yaml, as you (the deployer): each Genie agent opens and each metric view exists.
+    ${VAR}s are filled from config.env, like the app does at runtime. Returns the agents; raises on problems."""
+    import re
+    import yaml
+    api = w.api_client.do
+    expand = lambda v: re.sub(r"\$\{([A-Z_][A-Z0-9_]*)\}", lambda m: cfg.get(m.group(1), ""), v) if isinstance(v, str) else v
+    doc = yaml.safe_load(Path(agents_file).read_text()) or {}
+    agents = [{k: expand(v) for k, v in a.items()} for a in doc.get("agents") or []]
+    if not agents:
+        raise RuntimeError(f"{agents_file} has no agents.")
+    problems = []
+    for a in agents:
+        sid, mv = a.get("space_id"), a.get("metric_view")
         try:
-            run_sql(w, warehouse_id, g)
-            print(f"✅ {g}")
-        except StatementError as e:
-            for_owner.append(g)
-            print(f"⚠️  Couldn't run: {g}\n    {str(e)[:300]}")
-    for sid in genie_space_ids:
-        w.api_client.do("PATCH", f"/api/2.0/permissions/genie/{sid}",
-                        body={"access_control_list": [{"service_principal_name": sp, "permission_level": "CAN_RUN"}]})
-        print(f"✅ CAN_RUN on Genie space {sid}")
-    if for_owner:
-        print("\n👉 Ask your schema owner (or anyone with MANAGE on it) to run:\n\n" + ";\n".join(for_owner) + ";\n")
-        print("The app deploys either way. With user authorization on, it reads data as each viewer and doesn't need")
-        print("these; with it off, it can't read the data until they're granted.")
-    return for_owner
+            s = api("GET", f"/api/2.0/genie/spaces/{sid}")
+            print(f"✅ {a['key']}: Genie agent '{s.get('title')}' ({sid})")
+        except Exception as e:
+            problems.append(f"{a['key']}: Genie agent {sid!r} doesn't open for you ({str(e)[:160]})")
+        if mv:
+            try:
+                t = api("GET", f"/api/2.1/unity-catalog/tables/{mv}")
+                print(f"   metric view {mv} ({t.get('table_type')}, {len(t.get('columns') or [])} columns)")
+            except Exception as e:
+                problems.append(f"{a['key']}: metric view {mv!r} not found or not visible ({str(e)[:160]})")
+    if problems:
+        raise RuntimeError("Fix agents.yaml:\n- " + "\n- ".join(problems))
+    return agents
+

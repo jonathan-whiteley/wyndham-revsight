@@ -13,6 +13,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -34,6 +35,11 @@ async def lifespan(app: FastAPI):
     # Startup. No data queries here: there's no viewer yet, so they'd need the
     # service principal's grants. The UI fetches "data as of" per request.
     logger.info("RevSight IQ backend starting...")
+    try:
+        from config import settings
+        logger.info("Genie agents: " + ", ".join(f"{a['key']} -> {a['space_id']}" for a in settings.agents()))
+    except Exception as e:
+        logger.error(f"agents.yaml: {e}")
 
     yield
 
@@ -44,7 +50,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app
 app = FastAPI(
     title="RevSight IQ",
-    description="Wyndham Revenue Explorer powered by Genie",
+    description="Revenue explorer powered by Genie",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -61,8 +67,12 @@ app.add_middleware(
 @app.middleware("http")
 async def forward_user(request: Request, call_next):
     """Run this request's Databricks calls as the viewer (see services/user_auth.py)."""
-    user_auth.set_request_user(request.headers.get("x-forwarded-access-token"),
-                               request.headers.get("x-forwarded-email") or request.headers.get("x-forwarded-user"))
+    token = request.headers.get("x-forwarded-access-token")
+    if user_auth.IN_APPS and not token and request.url.path.startswith("/api/") and request.url.path != "/api/health":
+        # Never fall back to the app's service principal: it has no grants by design.
+        return JSONResponse(status_code=401, content={"detail": "No user token. Turn on user authorization for Databricks Apps "
+                                                                "and give the app its user_api_scopes (see the README), then reload."})
+    user_auth.set_request_user(token, request.headers.get("x-forwarded-email") or request.headers.get("x-forwarded-user"))
     return await call_next(request)
 
 

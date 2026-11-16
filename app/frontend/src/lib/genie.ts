@@ -1,8 +1,8 @@
-/** Conversation store: one Genie thread per data model (nt, str), kept across tab switches. */
+/** Conversation store: one Genie thread per data model (agent), kept across tab switches. */
 import { useCallback, useRef, useState } from 'react';
 import { apiClient, GenieMessage, ModelKey } from './api';
 
-export type ThreadKey = 'nt' | 'str';
+export type ThreadKey = ModelKey;
 
 export interface Turn {
   id: string;
@@ -25,18 +25,22 @@ interface ThreadState {
   conversationId?: string;
 }
 
-const POLL_MS = 1500;
-const TIMEOUT_MS = 180_000;
+// Genie API guidance: poll every 1-5 s with backoff, stop after 10 minutes, retry transient failures.
+const POLL_FIRST_MS = 1000;
+const POLL_MAX_MS = 5000;
+const POLL_GROWTH = 1.3;
+const TIMEOUT_MS = 600_000;
+const MAX_POLL_ERRORS = 4;
 
 export function useGenieThreads() {
-  const [threads, setThreads] = useState<Record<ThreadKey, ThreadState>>({ nt: { turns: [] }, str: { turns: [] } });
+  const [threads, setThreads] = useState<Record<ThreadKey, ThreadState>>({});
   const ref = useRef(threads);
   ref.current = threads;
 
   const update = useCallback((key: ThreadKey, id: string, patch: Partial<Turn>) => {
     setThreads(prev => ({
       ...prev,
-      [key]: { ...prev[key], turns: prev[key].turns.map(t => (t.id === id ? { ...t, ...patch } : t)) },
+      [key]: { ...prev[key], turns: (prev[key]?.turns || []).map(t => (t.id === id ? { ...t, ...patch } : t)) },
     }));
   }, []);
 
@@ -44,15 +48,25 @@ export function useGenieThreads() {
     async (key: ThreadKey, model: ModelKey, question: string) => {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const startedAt = Date.now();
-      setThreads(prev => ({ ...prev, [key]: { ...prev[key], turns: [...prev[key].turns, { id, question, model, status: 'pending', startedAt }] } }));
+      setThreads(prev => ({ ...prev, [key]: { ...prev[key], turns: [...(prev[key]?.turns || []), { id, question, model, status: 'pending', startedAt }] } }));
       try {
-        const { conversation_id, message_id } = await apiClient.askGenie(model, question, ref.current[key].conversationId);
+        const { conversation_id, message_id } = await apiClient.askGenie(model, question, ref.current[key]?.conversationId);
         setThreads(prev => ({ ...prev, [key]: { ...prev[key], conversationId: conversation_id } }));
         update(key, id, { conversationId: conversation_id, messageId: message_id });
         let tableShown = false;
+        let delay = POLL_FIRST_MS;
+        let errors = 0;
         while (Date.now() - startedAt < TIMEOUT_MS) {
-          await new Promise(r => setTimeout(r, POLL_MS));
-          const m = await apiClient.getGenieMessage(model, conversation_id, message_id);
+          await new Promise(r => setTimeout(r, delay));
+          delay = Math.min(POLL_MAX_MS, delay * POLL_GROWTH);
+          let m;
+          try {
+            m = await apiClient.getGenieMessage(model, conversation_id, message_id);
+            errors = 0;
+          } catch (e) {
+            if (++errors > MAX_POLL_ERRORS) throw e;
+            continue; // transient: back off and poll again
+          }
           if (m.partial && m.columns.length && !tableShown) {
             tableShown = true;
             update(key, id, { result: m, tableMs: Date.now() - startedAt });
@@ -68,7 +82,7 @@ export function useGenieThreads() {
             return;
           }
         }
-        update(key, id, { status: 'error', error: 'Genie did not answer within 3 minutes', elapsedMs: Date.now() - startedAt });
+        update(key, id, { status: 'error', error: 'Genie did not answer within 10 minutes', elapsedMs: Date.now() - startedAt });
       } catch (e) {
         update(key, id, { status: 'error', error: e instanceof Error ? e.message : String(e), elapsedMs: Date.now() - startedAt });
       }

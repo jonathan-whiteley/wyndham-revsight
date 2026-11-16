@@ -1,0 +1,49 @@
+# RevSight IQ: the Genie agents the app talks to. This is the one file to edit to use your own.
+#
+# The app reads everything else from the agent and its metric view at runtime, as the signed-in user:
+# the agent's title, its sample questions (the first 3 are the home-screen starters), the field
+# list (dimensions and measures) and the "data as of" date (latest value of the first date dimension).
+#
+# ${VAR} values come from config.env (deploy scripts and the workspace_deploy notebook copy them
+# into the app's environment). In your own copy you can write the values directly instead.
+
+# Optional. SQL warehouse for the app's own queries: the "data as of" date and the Anomalies tab.
+# Leave it empty and both are hidden; Genie answers still work (Genie uses its agent's warehouse).
+warehouse_id: ${WAREHOUSE_ID}
+
+# Optional, demo only. Schema with the demo's anomaly_site_day and dim_site tables. Remove to hide the tab.
+anomalies:
+  schema: ${UC_CATALOG}.${UC_SCHEMA}
+
+agents:
+  - key: nt                                  # short id, used in URLs (?model=nt)
+    space_id: ${GENIE_SPACE_NT}               # Genie agent ID (from the agent's URL or About tab)
+    metric_view: ${UC_CATALOG}.${UC_SCHEMA}.mv_nt_performance   # source of the field list and "data as of"
+    label: NT Performance (daily)            # optional, data model picker label (default: the agent's title)
+    grain: site x stay date (daily)          # optional, shown under the agent name
+    # Optional: first question when someone clicks a field on an empty thread ({label} is the field).
+    starter_measure: "{label} by chain scale for September 2026 vs September 2025"
+    starter_dimension: "RevPAR, ADR and occupancy by {label} for September 2026 vs September 2025"
+    # Optional: group and order the metric view's fields. Unlisted fields go under Measures or Dimensions.
+    field_groups:
+      Measures: [occupancy, adr, revpar, room_revenue, rooms_sold, rooms_available, site_count]
+      Time: [stay_date, week_start, month, quarter, year, day_of_week]
+      Property: [site_id, property_name, brand, chain_scale, ownership]
+      Geography: [state, city, market, region, hurricane_market]
+    # Optional: display labels (default: the column name in words).
+    labels: {site_id: Site, week_start: Week}
+
+  - key: str
+    space_id: ${GENIE_SPACE_STR}
+    metric_view: ${UC_CATALOG}.${UC_SCHEMA}.mv_str_compset
+    label: STR Comp Set (weekly)
+    grain: site x week (complete comp weeks only)
+    starter_measure: "{label} by chain scale, weekly for Aug-Sep 2026"
+    starter_dimension: "RGI, MPI and ARI by {label} for September 2026"
+    field_groups:
+      Index measures: [rgi, mpi, ari]
+      Own vs comp: [revpar, comp_revpar, adr, comp_adr, occupancy, comp_occupancy]
+      Time: [week_start, month, year]
+      Property: [site_id, property_name, brand, chain_scale]
+      Geography: [state, market, region, hurricane_market]
+    labels: {site_id: Site, week_start: Week, rgi: RGI, mpi: MPI, ari: ARI}

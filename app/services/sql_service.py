@@ -11,18 +11,20 @@ logger = logging.getLogger(__name__)
 
 
 def get_sql_connection():
-    """Connection to the SQL warehouse as the current viewer (OBO), else the default identity."""
+    """Connection to the app's SQL warehouse as the viewer (Apps) or your CLI profile (local)."""
     warehouse_id = settings.warehouse_id()
-    cfg = user_auth.default_config()
+    if not warehouse_id:
+        raise RuntimeError("No warehouse_id in agents.yaml: the app's own SQL (data as of, Anomalies) is off.")
     conn_args = dict(
-        server_hostname=cfg.host.replace("https://", "").rstrip("/"),
+        server_hostname=user_auth.host().replace("https://", "").rstrip("/"),
         http_path=f"/sql/1.0/warehouses/{warehouse_id}",
     )
     token = user_auth.user_token()
     if token:
         return connect(**conn_args, access_token=token)
-    # credentials_provider works for every SDK auth type; a static token is
-    # empty for OAuth M2M and makes the connector fall back to a browser login.
+    # Local: credentials_provider works for every SDK auth type; a static token is
+    # empty for OAuth and makes the connector fall back to a browser login.
+    cfg = user_auth.local_config()
     return connect(**conn_args, credentials_provider=lambda: cfg.authenticate)
 
 

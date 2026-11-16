@@ -1,4 +1,4 @@
-"""Genie service: routes questions to the Genie agent for a data model (NT or STR)."""
+"""Genie service: routes questions to the Genie agent for a data model (agents.yaml), as the viewer."""
 
 import logging
 from typing import Optional, Dict, Any, List
@@ -21,9 +21,7 @@ class GenieService:
         self._results: Dict[tuple, Dict[str, Any]] = {}
 
     def _space(self, model: str) -> str:
-        if model not in ("nt", "str"):
-            raise ValueError(f"Unknown model: {model}")
-        return settings.genie_space(model)
+        return settings.agent(model)["space_id"]
 
     def ask(self, model: str, question: str, conversation_id: Optional[str] = None) -> Dict[str, Any]:
         """Start a conversation (or continue one) without waiting for the answer."""

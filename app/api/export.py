@@ -20,6 +20,7 @@ class ExportRequest(BaseModel):
     data_as_of: str
     pivot: Optional[Dict[str, Any]] = None
     truncated: bool = False
+    metric_view: Optional[str] = None
 
 
 @router.post("/export/xlsx")
@@ -35,6 +36,7 @@ def export_xlsx(request: ExportRequest):
             data_as_of=request.data_as_of,
             pivot_spec=request.pivot,
             truncated=request.truncated,
+            source=f"Unity Catalog metric view {request.metric_view} via Genie" if request.metric_view else "Genie",
         )
 
         return StreamingResponse(

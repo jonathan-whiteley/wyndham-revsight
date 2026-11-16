@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 from services.genie_service import genie_service
 from services.perf_service import perf_service
-from services.models_config import get_model_config
+from config.settings import agent as get_model_config
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

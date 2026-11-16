@@ -6,11 +6,13 @@ type TabType = 'explorer' | 'anomalies';
 interface HeaderProps {
   activeTab: TabType;
   onTabChange: (tab: TabType) => void;
-  dataAsOf: string;
+  /** null hides the chip (no warehouse in agents.yaml). */
+  dataAsOf: string | null;
   anomalyCount?: number | null;
+  showAnomalies: boolean;
 }
 
-export default function Header({ activeTab, onTabChange, dataAsOf, anomalyCount }: HeaderProps) {
+export default function Header({ activeTab, onTabChange, dataAsOf, anomalyCount, showAnomalies }: HeaderProps) {
   const getTabClass = (tab: TabType) => {
     const base = 'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all';
     if (tab === activeTab) {
@@ -36,23 +38,30 @@ export default function Header({ activeTab, onTabChange, dataAsOf, anomalyCount 
           </div>
         </div>
 
-        <nav className="flex items-center bg-surface-secondary rounded-2xl p-1.5">
-          <button onClick={() => onTabChange('explorer')} className={getTabClass('explorer')}>
-            <MessageSquareText className="w-4 h-4" />
-            Explorer
-          </button>
-          <button onClick={() => onTabChange('anomalies')} className={getTabClass('anomalies')}>
-            <Radar className="w-4 h-4" />
-            Anomalies
-            {anomalyCount ? <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-700">{anomalyCount}</span> : null}
-          </button>
-        </nav>
+        {/* One tab needs no tab bar: Anomalies is demo-only (agents.yaml: anomalies). */}
+        {showAnomalies ? (
+          <nav className="flex items-center bg-surface-secondary rounded-2xl p-1.5">
+            <button onClick={() => onTabChange('explorer')} className={getTabClass('explorer')}>
+              <MessageSquareText className="w-4 h-4" />
+              Explorer
+            </button>
+            <button onClick={() => onTabChange('anomalies')} className={getTabClass('anomalies')}>
+              <Radar className="w-4 h-4" />
+              Anomalies
+              {anomalyCount ? <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-700">{anomalyCount}</span> : null}
+            </button>
+          </nav>
+        ) : (
+          <div />
+        )}
 
         <div className="flex items-center gap-3">
-          <span className="inline-flex items-center gap-1.5 rounded-full text-xs px-3 py-1 bg-green-50 text-green-700">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-            {dataAsOf ? `Data as of ${formatDate(dataAsOf)}` : 'Loading data date…'}
-          </span>
+          {dataAsOf !== null && (
+            <span className="inline-flex items-center gap-1.5 rounded-full text-xs px-3 py-1 bg-green-50 text-green-700">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+              {dataAsOf ? `Data as of ${formatDate(dataAsOf)}` : 'Loading data date…'}
+            </span>
+          )}
           <span className="inline-flex items-center gap-1.5 rounded-full text-xs px-3 py-1 bg-gray-100 text-gray-700">
             <ShieldCheck className="w-3.5 h-3.5" />
             Unity Catalog governed

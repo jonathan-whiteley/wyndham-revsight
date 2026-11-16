@@ -126,10 +126,17 @@ export default function ResultCard({ turn, index, agentName, active, otherModelL
 
           {(hasRows || canRate) && (
             <div className="flex flex-wrap items-center gap-2">
-              {hasRows && onPivot && (
+              {/* The pivot panel follows the latest answer; this points it at an earlier one. */}
+              {hasRows && active && (
+                <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl text-wyndham-blue">
+                  <Grid3x3 className="w-3.5 h-3.5" />
+                  In pivot
+                </span>
+              )}
+              {hasRows && !active && onPivot && (
                 <button onClick={onPivot} className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-surface-secondary text-text-secondary hover:text-wyndham-blue">
                   <Grid3x3 className="w-3.5 h-3.5" />
-                  Pivot
+                  Pivot this answer
                 </button>
               )}
               {hasRows && (

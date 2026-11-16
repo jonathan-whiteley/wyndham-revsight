@@ -3,10 +3,18 @@
 import logging
 from datetime import date, timedelta
 from typing import List, Dict, Any, Optional
-from config.settings import fq
+from config import settings
 from services.sql_service import execute_query
 
 logger = logging.getLogger(__name__)
+
+
+def fq(table: str) -> str:
+    """A table in the demo anomaly schema (agents.yaml: anomalies.schema)."""
+    schema = settings.anomalies_schema()
+    if not schema:
+        raise RuntimeError("Anomalies are off: set anomalies.schema and warehouse_id in agents.yaml.")
+    return f"{schema}.{table}"
 
 # Allowlist valid filter values
 VALID_CATEGORIES = ["performance", "data_quality"]

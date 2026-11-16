@@ -4,7 +4,8 @@
 
 const API_BASE = '/api';
 
-export type ModelKey = 'nt' | 'str';
+/** An agent key from agents.yaml (nt, str in the demo). */
+export type ModelKey = string;
 
 export type FeedbackRating = 'POSITIVE' | 'NEGATIVE' | 'NONE';
 
@@ -12,8 +13,19 @@ export interface Model {
   key: ModelKey;
   label: string;
   agent_name: string;
-  metric_view: string;
-  grain: string;
+  description?: string | null;
+  metric_view?: string | null;
+  grain?: string | null;
+  /** First question when a field is clicked on an empty thread; {label} is the field. */
+  starter_measure?: string | null;
+  starter_dimension?: string | null;
+  /** Set when the viewer can't read the Genie agent. */
+  error?: string | null;
+}
+
+export interface Features {
+  anomalies: boolean;
+  data_as_of: boolean;
 }
 
 export interface Field {
@@ -21,6 +33,7 @@ export interface Field {
   label: string;
   kind: 'dimension' | 'measure';
   followup: string;
+  description?: string | null;
 }
 
 export interface FieldGroup {
@@ -119,8 +132,15 @@ async function json<T>(res: Response): Promise<T> {
 export const apiClient = {
   getModels: (): Promise<Model[]> => fetch(`${API_BASE}/models`).then(r => json<Model[]>(r)),
 
+  getFeatures: (): Promise<Features> => fetch(`${API_BASE}/features`).then(r => json<Features>(r)),
+
   getFields: (model: ModelKey): Promise<FieldGroup[]> =>
-    fetch(`${API_BASE}/fields?model=${model}`).then(r => json<{ groups: FieldGroup[] }>(r)).then(d => d.groups),
+    fetch(`${API_BASE}/models/${model}/fields`).then(r => json<{ groups: FieldGroup[] }>(r)).then(d => d.groups),
+
+  getSamples: (model: ModelKey): Promise<string[]> =>
+    fetch(`${API_BASE}/models/${model}/samples`).then(r => json<{ questions: string[] }>(r)).then(d => d.questions),
+
+  getDataAsOf: (model: ModelKey) => fetch(`${API_BASE}/models/${model}/data-as-of`).then(r => json<{ date: string | null }>(r)),
 
   askGenie: (model: ModelKey, question: string, conversation_id?: string) =>
     fetch(`${API_BASE}/genie/ask`, {
@@ -146,8 +166,6 @@ export const apiClient = {
   getAnomalySeries: (id: string) => fetch(`${API_BASE}/anomalies/${id}/series`).then(r => json<AnomalySeries>(r)),
 
 
-  getDataAsOf: () => fetch(`${API_BASE}/stats/data-as-of`).then(r => json<{ date: string | null }>(r)),
-
   async exportXlsx(body: {
     question: string;
     sql: string;
@@ -156,6 +174,7 @@ export const apiClient = {
     rows: Array<Array<string | null>>;
     data_as_of: string;
     truncated: boolean;
+    metric_view?: string | null;
     pivot?: unknown;
   }): Promise<Blob> {
     const res = await fetch(`${API_BASE}/export/xlsx`, {
