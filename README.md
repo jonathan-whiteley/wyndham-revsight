@@ -26,10 +26,9 @@
 
 ## ✨ What it does
 
-| Tab | What you get |
+| Screen | What you get |
 |---|---|
 | **Explorer** | Start from the Genie agent's own sample questions, or ask in plain English, then click any field to add a breakout. Genie writes the SQL against a governed metric view. The pivot panel re-shapes results without re-querying (drag fields in; ones the answer doesn't have yet are fetched by Genie), and one click exports a native Excel pivot. Tables come first; the chart view picks a chart type from the result's shape. Thumbs up/down and comments go to the Genie agent's feedback, recorded as the viewer. |
-| **Anomalies** (demo only) | Outliers and data-quality issues (implausible revenue, capacity violations, missing NT feeds, RGI drops) with a chart against the expected band. Hidden when `app/agents.yaml` has no `anomalies` block. |
 
 The demo ships two Genie agents: **NT Performance** (daily occupancy, ADR, RevPAR) and **STR Comp Set** (weekly RGI, MPI, ARI). Each knows the Wyndham glossary and refuses joins that don't make sense (for example booking channel by comp set). To point the app at **your own Genie agents and metric views**, see [Use your own Genie agent](#own-agent).
 
@@ -37,12 +36,12 @@ The demo ships two Genie agents: **NT Performance** (daily occupancy, ADR, RevPA
 
 ```mermaid
 flowchart LR
-    U([Revenue analyst]) --> UI[React UI<br/>Explorer · Anomalies]
+    U([Revenue analyst]) --> UI[React UI<br/>Explorer]
     UI --> API[FastAPI backend<br/>Databricks App]
     CFG[[app/agents.yaml<br/>Genie agent IDs + metric views]] -.-> API
     API -- "questions, feedback (as the viewer)" --> G[Genie agents]
     API -- "fields (as the viewer)" --> UC[Unity Catalog<br/>metric view columns]
-    API -- "data as of, anomalies (as the viewer)" --> WH[SQL warehouse]
+    API -- "data as of (as the viewer)" --> WH[SQL warehouse]
     G --> MV[(Metric views)]
     WH --> MV
     MV --> T[(Delta tables)]
@@ -114,7 +113,7 @@ git clone git@github.com:jonathan-whiteley/wyndham-revsight.git && cd wyndham-re
 ```
 
 1. **Edit `config.env`** (see the next section).
-2. **Build the demo data** in your schema: tables, metric views and planted anomalies. Skip for your own agents.
+2. **Build the demo data** in your schema: tables, metric views and the planted data issues the demo agent finds. Skip for your own agents.
    ```bash
    scripts/setup_data.sh            # resume after a failure with: --from 09
    ```
@@ -182,7 +181,7 @@ agents:
   #   metric_view: ...
 ```
 
-Optional per agent: `grain` (shown under the agent name), `starter_measure` / `starter_dimension` (first question when a field is clicked on an empty thread; `{label}` is the field), `field_groups` and `labels` (group, order and rename the metric view's fields; see the demo entries), `date_field` (the dimension behind "data as of"). Delete the `anomalies` block: it only works with the demo tables. With one agent the data model picker hides itself.
+Optional per agent: `grain` (shown under the agent name), `starter_measure` / `starter_dimension` (first question when a field is clicked on an empty thread; `{label}` is the field), `field_groups` and `labels` (group, order and rename the metric view's fields; see the demo entries), `date_field` (the dimension behind "data as of"). With one agent the data model picker hides itself.
 
 **Let Genie Code drive.** In your Git folder of this repo, open **Genie Code** in **Agent mode** and paste:
 
@@ -192,8 +191,8 @@ I want to deploy the RevSight IQ app from this Git folder on my own Genie agents
    For each one, find the metric view it's built on (from the agent's tables if I can edit
    it, otherwise ask me) and check it exists.
 2. Rewrite app/agents.yaml with literal values (no ${...}): one entry per agent with key
-   (short, lowercase), space_id, metric_view and label. Remove the anomalies block and the
-   demo-only lines (field_groups, labels, starter_measure, starter_dimension). Ask whether I
+   (short, lowercase), space_id, metric_view and label. Remove the demo-only lines
+   (field_groups, labels, starter_measure, starter_dimension). Ask whether I
    want the "data as of" date: if yes, list the SQL warehouses I can use, ask me to pick one
    and set warehouse_id to its ID; if no, remove warehouse_id.
 3. In config.env, set APP_NAME to a name I choose (lowercase letters, numbers and dashes,
@@ -251,8 +250,7 @@ Everything else follows from these values: the SQL in `setup/sql/` uses `{{catal
 | **Each viewer** (or a group) | `CAN USE` on the app | Open it |
 | | At least `CAN VIEW` (or `CAN RUN`) on each Genie agent | Ask questions and send feedback |
 | | `USE CATALOG`, `USE SCHEMA` and `SELECT` on the agent's metric views (and anything else the agent reads) | Genie and the field list check the viewer's own Unity Catalog access |
-| | `CAN USE` on the app's `warehouse_id`, only if it's set | "Data as of" and Anomalies run SQL as the viewer. Genie itself doesn't need it: it runs on its agent's warehouse with the author's compute credentials |
-| | Demo Anomalies only: `SELECT` on `anomaly_site_day`, `dim_site`, `fact_sales_occupancy` | The Anomalies tab reads them directly |
+| | `CAN USE` on the app's `warehouse_id`, only if it's set | "Data as of" runs SQL as the viewer. Genie itself doesn't need it: it runs on its agent's warehouse with the author's compute credentials |
 | **The app's service principal** | **Nothing** | See below |
 
 Each viewer clicks **Authorize** on a consent screen (Genie, Databricks SQL, read Unity Catalog tables) the first time they open the app, and again whenever its scopes change.
@@ -303,7 +301,7 @@ set -a; source config.env; set +a; python3 setup/genie/acceptance.py
 │   ├── app.yaml               template: "{{KEY}}"s filled from config.env by deploy.sh and the notebook (the bundle uses resources/revsight.app.yml)
 │   ├── main.py                FastAPI entry point (forwards the viewer's token; 401 without one)
 │   ├── api/                   HTTP routes
-│   ├── services/              Genie, agent metadata, SQL, anomalies, Excel export, user auth
+│   ├── services/              Genie, agent metadata, SQL, Excel export, user auth
 │   ├── config/settings.py     reads agents.yaml
 │   └── frontend/              React + Vite UI (dist/ is committed and is all that's deployed)
 ├── setup/

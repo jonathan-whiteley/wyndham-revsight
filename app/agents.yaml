@@ -7,13 +7,9 @@
 # ${VAR} values come from config.env (deploy scripts and the workspace_deploy notebook copy them
 # into the app's environment). In your own copy you can write the values directly instead.
 
-# Optional. SQL warehouse for the app's own queries: the "data as of" date and the Anomalies tab.
-# Leave it empty and both are hidden; Genie answers still work (Genie uses its agent's warehouse).
+# Optional. SQL warehouse for the "data as of" date (the app's only own query).
+# Leave it empty to hide the date; Genie answers still work (Genie uses its agent's warehouse).
 warehouse_id: ${WAREHOUSE_ID}
-
-# Optional, demo only. Schema with the demo's anomaly_site_day and dim_site tables. Remove to hide the tab.
-anomalies:
-  schema: ${UC_CATALOG}.${UC_SCHEMA}
 
 agents:
   - key: nt                                  # short id, used in URLs (?model=nt)

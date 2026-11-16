@@ -24,7 +24,6 @@ export interface Model {
 }
 
 export interface Features {
-  anomalies: boolean;
   data_as_of: boolean;
 }
 
@@ -76,45 +75,6 @@ export interface PerfMetrics {
   found: boolean;
 }
 
-export interface Anomaly {
-  anomaly_id: string;
-  site_id: string | null;
-  property_name: string;
-  brand: string | null;
-  chain_scale: string | null;
-  market: string;
-  region: string | null;
-  site_count: number;
-  anomaly_type: string;
-  category: 'performance' | 'data_quality';
-  severity: 'high' | 'medium' | 'low';
-  start_date: string;
-  end_date: string;
-  metric: string;
-  observed: number | null;
-  expected: number | null;
-  deviation_pct: number | null;
-  zscore: number | null;
-  description: string;
-  suggested_question: string;
-  model: ModelKey;
-}
-
-export interface SeriesPoint {
-  date: string;
-  value: number | null;
-  expected: number | null;
-  lower: number | null;
-  upper: number | null;
-  in_window: boolean;
-}
-
-export interface AnomalySeries {
-  series: SeriesPoint[];
-  metric: string | null;
-  error?: string;
-}
-
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let detail = `${res.status} ${res.statusText}`;
@@ -161,9 +121,6 @@ export const apiClient = {
 
   getPerf: (statement_id: string) => fetch(`${API_BASE}/genie/perf/${statement_id}`).then(r => json<PerfMetrics>(r)),
 
-  getAnomalies: (): Promise<Anomaly[]> => fetch(`${API_BASE}/anomalies`).then(r => json<Anomaly[]>(r)),
-
-  getAnomalySeries: (id: string) => fetch(`${API_BASE}/anomalies/${id}/series`).then(r => json<AnomalySeries>(r)),
 
 
   async exportXlsx(body: {

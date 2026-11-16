@@ -4,14 +4,6 @@ import { apiClient, Features, Model, ModelKey } from './lib/api';
 import { useGenieThreads } from './lib/genie';
 import Header from './components/Header';
 import Explorer from './pages/Explorer';
-import Anomalies from './pages/Anomalies';
-
-type TabType = 'explorer' | 'anomalies';
-
-function initialTab(): TabType {
-  const h = window.location.hash.slice(1);
-  return h === 'anomalies' ? h : 'explorer';
-}
 
 /** ?model= or the last one used; checked against agents.yaml once the models load. */
 function initialModel(): ModelKey {
@@ -19,12 +11,10 @@ function initialModel(): ModelKey {
 }
 
 function App() {
-  const [tab, setTab] = useState<TabType>(initialTab);
   const [model, setModel] = useState<ModelKey>(initialModel);
   const [models, setModels] = useState<Model[]>([]);
   const [dataAsOf, setDataAsOf] = useState('');
-  const [features, setFeatures] = useState<Features>({ anomalies: false, data_as_of: false });
-  const [anomalyCount, setAnomalyCount] = useState<number | null>(null);
+  const [features, setFeatures] = useState<Features>({ data_as_of: false });
   const [pending, setPending] = useState<{ model: ModelKey; question: string; nonce: number } | null>(null);
   const genie = useGenieThreads();
 
@@ -36,14 +26,7 @@ function App() {
         setModel(m => (ms.some(x => x.key === m) ? m : ms[0]?.key || ''));
       })
       .catch(() => setModels([]));
-    apiClient
-      .getFeatures()
-      .then(f => {
-        setFeatures(f);
-        if (f.anomalies) apiClient.getAnomalies().then(a => setAnomalyCount(a.length)).catch(() => undefined);
-        else if (initialTab() === 'anomalies') setTab('explorer');
-      })
-      .catch(() => undefined);
+    apiClient.getFeatures().then(setFeatures).catch(() => undefined);
   }, []);
 
   // "Data as of" follows the selected agent's metric view.
@@ -51,11 +34,6 @@ function App() {
     if (!model || !features.data_as_of) return setDataAsOf('');
     apiClient.getDataAsOf(model).then(d => setDataAsOf(d.date || '')).catch(() => setDataAsOf(''));
   }, [model, features.data_as_of]);
-
-  const changeTab = (t: TabType) => {
-    setTab(t);
-    window.history.replaceState({}, '', `${window.location.pathname}${window.location.search}#${t}`);
-  };
 
   const changeModel = useCallback((m: ModelKey) => {
     setModel(m);
@@ -65,11 +43,10 @@ function App() {
     window.history.replaceState({}, '', `?${params.toString()}${window.location.hash}`);
   }, []);
 
+  // Ask in another data model (the "switch to <model> and ask again" chip).
   const askIn = useCallback(
     (m: ModelKey, question: string) => {
       changeModel(m);
-      setTab('explorer');
-      window.history.replaceState({}, '', `?model=${m}#explorer`);
       setPending({ model: m, question, nonce: Date.now() });
     },
     [changeModel],
@@ -77,22 +54,18 @@ function App() {
 
   return (
     <div className="min-h-screen bg-surface-secondary">
-      <Header activeTab={tab} onTabChange={changeTab} dataAsOf={features.data_as_of ? dataAsOf : null} anomalyCount={features.anomalies ? anomalyCount : null} showAnomalies={features.anomalies} />
+      <Header dataAsOf={features.data_as_of ? dataAsOf : null} />
       <main className="max-w-[1600px] mx-auto px-6 py-6">
-        {/* Explorer stays mounted so threads and pivots survive tab switches */}
-        <div className={tab === 'explorer' ? '' : 'hidden'}>
-          <Explorer
-            model={model}
-            models={models}
-            onModelChange={changeModel}
-            genie={genie}
-            dataAsOf={dataAsOf}
-            pending={pending}
-            onPendingConsumed={() => setPending(null)}
-            onSwitchAndAsk={askIn}
-          />
-        </div>
-        {tab === 'anomalies' && features.anomalies && <Anomalies models={models} onInvestigate={askIn} onCount={setAnomalyCount} />}
+        <Explorer
+          model={model}
+          models={models}
+          onModelChange={changeModel}
+          genie={genie}
+          dataAsOf={dataAsOf}
+          pending={pending}
+          onPendingConsumed={() => setPending(null)}
+          onSwitchAndAsk={askIn}
+        />
       </main>
     </div>
   );
