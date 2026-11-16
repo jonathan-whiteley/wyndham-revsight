@@ -1,8 +1,8 @@
-/** Conversation store: one Genie thread per key (nt, str, reservations), kept across tab switches. */
+/** Conversation store: one Genie thread per data model (nt, str), kept across tab switches. */
 import { useCallback, useRef, useState } from 'react';
 import { apiClient, GenieMessage, ModelKey } from './api';
 
-export type ThreadKey = 'nt' | 'str' | 'res';
+export type ThreadKey = 'nt' | 'str';
 
 export interface Turn {
   id: string;
@@ -15,6 +15,9 @@ export interface Turn {
   tableMs?: number;
   result?: GenieMessage;
   error?: string;
+  /** Genie ids for this answer, needed to send feedback on it. */
+  conversationId?: string;
+  messageId?: string;
 }
 
 interface ThreadState {
@@ -26,7 +29,7 @@ const POLL_MS = 1500;
 const TIMEOUT_MS = 180_000;
 
 export function useGenieThreads() {
-  const [threads, setThreads] = useState<Record<ThreadKey, ThreadState>>({ nt: { turns: [] }, str: { turns: [] }, res: { turns: [] } });
+  const [threads, setThreads] = useState<Record<ThreadKey, ThreadState>>({ nt: { turns: [] }, str: { turns: [] } });
   const ref = useRef(threads);
   ref.current = threads;
 
@@ -45,6 +48,7 @@ export function useGenieThreads() {
       try {
         const { conversation_id, message_id } = await apiClient.askGenie(model, question, ref.current[key].conversationId);
         setThreads(prev => ({ ...prev, [key]: { ...prev[key], conversationId: conversation_id } }));
+        update(key, id, { conversationId: conversation_id, messageId: message_id });
         let tableShown = false;
         while (Date.now() - startedAt < TIMEOUT_MS) {
           await new Promise(r => setTimeout(r, POLL_MS));

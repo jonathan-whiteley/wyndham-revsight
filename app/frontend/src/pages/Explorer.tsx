@@ -201,7 +201,6 @@ export default function Explorer({ model, models, onModelChange, genie, dataAsOf
               agentName={current?.agent_name || 'Genie'}
               active={activeTurn?.id === t.id}
               otherModelLabel={other?.label}
-              onFollowUp={q => !busy && send(q)}
               onSwitchModel={q => {
                 if (!other) return;
                 // The other agent starts a fresh conversation, so carry the earlier questions as context.

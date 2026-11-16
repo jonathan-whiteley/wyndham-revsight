@@ -2,9 +2,9 @@
 
 import logging
 from typing import Optional, Dict, Any, List
-from databricks.sdk import WorkspaceClient
-
+from databricks.sdk.service.dashboards import GenieFeedbackRating
 from config import settings
+from services import user_auth
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +17,7 @@ CACHE_MAX = 200
 
 class GenieService:
     def __init__(self):
-        self.client = WorkspaceClient()
-        # Query results by (message, attachment, statement): polled every 1.5s, fetched once.
+        # Query results by (viewer, message, attachment, statement): polled every 1.5s, fetched once.
         self._results: Dict[tuple, Dict[str, Any]] = {}
 
     def _space(self, model: str) -> str:
@@ -29,17 +28,25 @@ class GenieService:
     def ask(self, model: str, question: str, conversation_id: Optional[str] = None) -> Dict[str, Any]:
         """Start a conversation (or continue one) without waiting for the answer."""
         space_id = self._space(model)
+        client = user_auth.workspace_client()
         if conversation_id:
-            msg = self.client.genie.create_message(space_id=space_id, conversation_id=conversation_id, content=question).response
+            msg = client.genie.create_message(space_id=space_id, conversation_id=conversation_id, content=question).response
         else:
-            msg = self.client.genie.start_conversation(space_id=space_id, content=question).response
+            msg = client.genie.start_conversation(space_id=space_id, content=question).response
         return {"model": model, "conversation_id": msg.conversation_id, "message_id": msg.message_id or msg.id}
 
+    def send_feedback(self, model: str, conversation_id: str, message_id: str, rating: str, comment: Optional[str] = None) -> None:
+        """Thumbs up/down (POSITIVE, NEGATIVE, NONE to clear) and an optional comment, recorded as the viewer."""
+        user_auth.workspace_client().genie.send_message_feedback(
+            space_id=self._space(model), conversation_id=conversation_id, message_id=message_id,
+            rating=GenieFeedbackRating(rating), comment=comment or None,
+        )
+
     def _fetch_result(self, space_id: str, conversation_id: str, message_id: str, att) -> Optional[Dict[str, Any]]:
-        key = (message_id, att.attachment_id, getattr(att.query, "statement_id", None))
+        key = (user_auth.cache_key(), message_id, att.attachment_id, getattr(att.query, "statement_id", None))
         if key in self._results:
             return self._results[key]
-        res = self.client.genie.get_message_attachment_query_result(
+        res = user_auth.workspace_client().genie.get_message_attachment_query_result(
             space_id=space_id, conversation_id=conversation_id, message_id=message_id, attachment_id=att.attachment_id,
         ).statement_response
         if not res or not res.manifest or not res.manifest.schema or not res.result:
@@ -62,7 +69,7 @@ class GenieService:
         """Current state of a message. Rows are returned as soon as the SQL finishes, while Genie
         is still writing its summary (partial=True), so the table can render ~10s before the text."""
         space_id = self._space(model)
-        m = self.client.genie.get_message(space_id=space_id, conversation_id=conversation_id, message_id=message_id)
+        m = user_auth.workspace_client().genie.get_message(space_id=space_id, conversation_id=conversation_id, message_id=message_id)
         status = m.status.value if hasattr(m.status, "value") else str(m.status)
         out: Dict[str, Any] = {
             "status": status, "partial": status not in TERMINAL, "text": "", "sql": "", "description": "", "columns": [], "rows": [],

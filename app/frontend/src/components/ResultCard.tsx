@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AlertTriangle, ArrowRightLeft, BarChart3, Check, Code2, Copy, FileSpreadsheet, Grid3x3, Loader2, Sparkles, Table2 } from 'lucide-react';
 import { Turn } from '../lib/genie';
+import Feedback from './Feedback';
 import Markdown from './Markdown';
 import PerfBadge from './PerfBadge';
 import ResultGrid from './ResultGrid';
@@ -11,9 +12,7 @@ interface Props {
   index: number;
   agentName: string;
   active: boolean;
-  totalRows?: number | null;
   otherModelLabel?: string;
-  onFollowUp: (q: string) => void;
   onSwitchModel?: (q: string) => void;
   onPivot?: () => void;
   onExport: () => void;
@@ -21,11 +20,12 @@ interface Props {
 
 const SWITCH_HINT = /(switch the data model|STR Comp Set \(weekly\)|NT Performance \(daily\))/i;
 
-export default function ResultCard({ turn, index, agentName, active, totalRows, otherModelLabel, onFollowUp, onSwitchModel, onPivot, onExport }: Props) {
+export default function ResultCard({ turn, index, agentName, active, otherModelLabel, onSwitchModel, onPivot, onExport }: Props) {
   const [view, setView] = useState<'table' | 'chart'>('table');
   const [copied, setCopied] = useState(false);
   const r = turn.result;
   const hasRows = !!r && r.columns.length > 0;
+  const canRate = turn.status === 'done' && !!turn.conversationId && !!turn.messageId;
   const suggestsSwitch = !!r && !!onSwitchModel && SWITCH_HINT.test(r.text) && !hasRows;
 
   const copySql = () => {
@@ -38,21 +38,9 @@ export default function ResultCard({ turn, index, agentName, active, totalRows, 
 
   return (
     <div className={`bg-white rounded-2xl border shadow-soft p-6 ${active ? 'border-wyndham-blue/30' : 'border-gray-100'}`}>
-      <div className="flex items-start justify-between gap-4 mb-4">
-        <div className="flex items-start gap-3">
-          <span className="w-6 h-6 shrink-0 rounded-full bg-wyndham-blue text-white flex items-center justify-center text-[11px] mt-0.5">{index}</span>
-          <p className="font-semibold">{turn.question}</p>
-        </div>
-        {hasRows && (
-          <div className="flex items-center gap-1 shrink-0">
-            <button title="Table" onClick={() => setView('table')} className="p-2 rounded-xl hover:bg-gray-100">
-              <Table2 className={`w-4 h-4 ${view === 'table' ? 'text-wyndham-blue' : 'text-text-secondary'}`} />
-            </button>
-            <button title="Chart" onClick={() => setView('chart')} className="p-2 rounded-xl hover:bg-gray-100">
-              <BarChart3 className={`w-4 h-4 ${view === 'chart' ? 'text-wyndham-blue' : 'text-text-secondary'}`} />
-            </button>
-          </div>
-        )}
+      <div className="flex items-start gap-3 mb-4">
+        <span className="w-6 h-6 shrink-0 rounded-full bg-wyndham-blue text-white flex items-center justify-center text-[11px] mt-0.5">{index}</span>
+        <p className="font-semibold">{turn.question}</p>
       </div>
 
       {turn.status === 'pending' && !hasRows && (
@@ -103,7 +91,17 @@ export default function ResultCard({ turn, index, agentName, active, totalRows, 
           {hasRows && (
             <>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <PerfBadge statementId={r.statement_id} elapsedMs={turn.elapsedMs} tableMs={turn.tableMs} totalRows={totalRows} />
+                <div className="flex items-center gap-2">
+                  <PerfBadge statementId={r.statement_id} elapsedMs={turn.elapsedMs} tableMs={turn.tableMs} />
+                  <div className="flex items-center gap-0.5">
+                    <button title="Table" onClick={() => setView('table')} className="p-1.5 rounded-lg hover:bg-gray-100">
+                      <Table2 className={`w-4 h-4 ${view === 'table' ? 'text-wyndham-blue' : 'text-text-secondary'}`} />
+                    </button>
+                    <button title="Chart" onClick={() => setView('chart')} className="p-1.5 rounded-lg hover:bg-gray-100">
+                      <BarChart3 className={`w-4 h-4 ${view === 'chart' ? 'text-wyndham-blue' : 'text-text-secondary'}`} />
+                    </button>
+                  </div>
+                </div>
                 <span className="text-xs text-text-tertiary">
                   {r.row_count.toLocaleString()} rows{r.truncated ? ' (truncated)' : ''}
                 </span>
@@ -126,31 +124,23 @@ export default function ResultCard({ turn, index, agentName, active, totalRows, 
             </details>
           )}
 
-          <div className="flex flex-wrap items-center gap-2">
-            {hasRows && (
-              <>
-                {onPivot && (
-                  <button onClick={onPivot} className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-surface-secondary text-text-secondary hover:text-wyndham-blue">
-                    <Grid3x3 className="w-3.5 h-3.5" />
-                    Pivot
-                  </button>
-                )}
+          {(hasRows || canRate) && (
+            <div className="flex flex-wrap items-center gap-2">
+              {hasRows && onPivot && (
+                <button onClick={onPivot} className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-surface-secondary text-text-secondary hover:text-wyndham-blue">
+                  <Grid3x3 className="w-3.5 h-3.5" />
+                  Pivot
+                </button>
+              )}
+              {hasRows && (
                 <button onClick={onExport} className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-wyndham-blue text-white hover:bg-wyndham-blue-dark">
                   <FileSpreadsheet className="w-3.5 h-3.5" />
                   Export to Excel
                 </button>
-              </>
-            )}
-            {r.suggested_questions.slice(0, 3).map(q => (
-              <button
-                key={q}
-                onClick={() => onFollowUp(q)}
-                className="text-xs px-3 py-1.5 rounded-full border border-gray-200 text-text-secondary hover:border-wyndham-blue hover:text-wyndham-blue text-left"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
+              )}
+              {canRate && <Feedback model={turn.model} conversationId={turn.conversationId!} messageId={turn.messageId!} />}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -17,16 +17,35 @@ print(json.dumps([
 PY
 )
 
+# On-behalf-of-user scopes: the app calls Genie and the warehouse as each viewer.
+# Sent on every update, since an update without them drops them.
+SCOPES='"user_api_scopes": ["sql", "genie"]'
+DESC='"description": "RevSight IQ: Genie revenue explorer on UC metric views"'
+
+# apps create/update with the scopes; if user authorization is off in the workspace, again without them.
+send() {
+  local out
+  if ! out=$(databricks "$@" "${P[@]}" -o json --json "{$BODY, $SCOPES}" 2>&1); then
+    [[ $out == *passthrough* ]] || { echo "$out" >&2; exit 1; }
+    echo "User authorization is off in this workspace; the app will run as its service principal."
+    echo "Ask a workspace admin to enable it, then re-run this script."
+    databricks "$@" "${P[@]}" -o json --json "{$BODY}" >/dev/null
+  fi
+}
+
 if databricks apps get "$APP_NAME" "${P[@]}" >/dev/null 2>&1; then
-  databricks apps update "$APP_NAME" "${P[@]}" -o json --json "{\"resources\": $RESOURCES}" >/dev/null
+  BODY="\"resources\": $RESOURCES"
+  send apps update "$APP_NAME"
   echo "Updated resources on $APP_NAME"
 else
   echo "Creating app $APP_NAME (waits until its compute is ACTIVE, a few minutes)..."
-  databricks apps create "${P[@]}" -o json --json "{\"name\": \"$APP_NAME\", \"description\": \"RevSight IQ: Genie revenue explorer on UC metric views\", \"resources\": $RESOURCES}" >/dev/null
+  BODY="\"name\": \"$APP_NAME\", $DESC, \"resources\": $RESOURCES"
+  send apps create
   echo "Created $APP_NAME"
 fi
 databricks apps get "$APP_NAME" "${P[@]}" -o json | python3 -c "
 import json,sys; d=json.load(sys.stdin)
 print('resources:', ', '.join(r['name'] for r in d.get('resources') or []))
+print('user api scopes:', ', '.join(d.get('user_api_scopes') or []) or 'none (runs as the service principal)')
 print('service principal client id:', d.get('service_principal_client_id'))
 print('url:', d.get('url'))"

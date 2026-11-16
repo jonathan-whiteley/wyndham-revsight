@@ -59,21 +59,6 @@ export function formatDate(s: string, withYear = true): string {
   return d.toLocaleDateString('en-US', withYear ? { month: 'short', day: 'numeric', year: 'numeric' } : { month: 'short', day: 'numeric' });
 }
 
-export function compactNumber(n: number | null | undefined): string {
-  if (n === null || n === undefined) return 'n/a';
-  if (n >= 1e9) return `${(n / 1e9).toFixed(1)}B`;
-  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`;
-  if (n >= 1e3) return `${(n / 1e3).toFixed(1)}K`;
-  return String(n);
-}
-
-export function formatBytes(b: number | null | undefined): string {
-  if (b === null || b === undefined) return 'n/a';
-  if (b >= 1e9) return `${(b / 1e9).toFixed(1)} GB`;
-  if (b >= 1e6) return `${(b / 1e6).toFixed(1)} MB`;
-  return `${(b / 1e3).toFixed(0)} KB`;
-}
-
 export function prettyLabel(col: string): string {
   const special: Record<string, string> = { revpar: 'RevPAR', adr: 'ADR', rgi: 'RGI', mpi: 'MPI', ari: 'ARI', comp_revpar: 'Comp RevPAR', comp_adr: 'Comp ADR', site_id: 'Site', yoy_change: 'YoY change' };
   if (special[col]) return special[col];

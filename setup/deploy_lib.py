@@ -74,5 +74,6 @@ def grant_app_access(w, warehouse_id, catalog, schema, sp, genie_space_ids=()):
         print(f"✅ CAN_RUN on Genie space {sid}")
     if for_owner:
         print("\n👉 Ask your schema owner (or anyone with MANAGE on it) to run:\n\n" + ";\n".join(for_owner) + ";\n")
-        print("The app deploys either way, but it can't read the data until these are granted.")
+        print("The app deploys either way. With user authorization on, it reads data as each viewer and doesn't need")
+        print("these; with it off, it can't read the data until they're granted.")
     return for_owner

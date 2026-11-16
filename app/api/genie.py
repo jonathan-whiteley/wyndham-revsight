@@ -1,9 +1,9 @@
 """Genie API endpoints."""
 
 import logging
-from typing import Optional
+from typing import Literal, Optional
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from services.genie_service import genie_service
 from services.perf_service import perf_service
 from services.models_config import get_model_config
@@ -22,6 +22,14 @@ class AskResponse(BaseModel):
     model: str
     conversation_id: str
     message_id: str
+
+
+class FeedbackRequest(BaseModel):
+    model: str
+    conversation_id: str
+    message_id: str
+    rating: Literal["POSITIVE", "NEGATIVE", "NONE"]
+    comment: Optional[str] = Field(default=None, max_length=2000)
 
 
 @router.post("/genie/ask")
@@ -56,6 +64,20 @@ def get_message(model: str, conversation_id: str, message_id: str):
     except Exception as e:
         logger.error(f"Error getting message: {e}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@router.post("/genie/feedback")
+def send_feedback(request: FeedbackRequest):
+    """Send thumbs up/down and an optional comment to Genie for one answer."""
+    try:
+        get_model_config(request.model)
+        genie_service.send_feedback(request.model, request.conversation_id, request.message_id, request.rating, request.comment)
+        return {"ok": True}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error sending feedback: {e}")
+        raise HTTPException(status_code=500, detail=f"Feedback error: {str(e)}")
 
 
 @router.get("/genie/perf/{statement_id}")

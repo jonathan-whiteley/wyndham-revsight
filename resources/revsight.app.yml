@@ -4,6 +4,11 @@ resources:
       name: ${var.app_name}
       description: "RevSight IQ: Genie revenue explorer on UC metric views"
       source_code_path: ../app
+      # On-behalf-of-user: Genie and SQL run as each viewer. Needs user authorization
+      # enabled in the workspace (deploy fails with "user token passthrough not enabled").
+      user_api_scopes:
+        - sql
+        - genie
       resources:
         - name: sql_warehouse
           sql_warehouse:

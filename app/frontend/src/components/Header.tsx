@@ -1,7 +1,7 @@
-import { Sparkles, MessageSquareText, Radar, Database, ShieldCheck } from 'lucide-react';
+import { Sparkles, MessageSquareText, Radar, ShieldCheck } from 'lucide-react';
 import { formatDate } from '../lib/format';
 
-type TabType = 'explorer' | 'anomalies' | 'reservations';
+type TabType = 'explorer' | 'anomalies';
 
 interface HeaderProps {
   activeTab: TabType;
@@ -31,7 +31,7 @@ export default function Header({ activeTab, onTabChange, dataAsOf, anomalyCount 
             </div>
             <div>
               <p className="font-semibold text-sm">RevSight IQ</p>
-              <p className="text-xs text-text-secondary">Revenue Explorer · Powered by Genie</p>
+              <p className="text-xs text-text-secondary">Powered by Genie</p>
             </div>
           </div>
         </div>
@@ -45,10 +45,6 @@ export default function Header({ activeTab, onTabChange, dataAsOf, anomalyCount 
             <Radar className="w-4 h-4" />
             Anomalies
             {anomalyCount ? <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-700">{anomalyCount}</span> : null}
-          </button>
-          <button onClick={() => onTabChange('reservations')} className={getTabClass('reservations')}>
-            <Database className="w-4 h-4" />
-            Reservations
           </button>
         </nav>
 

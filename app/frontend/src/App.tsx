@@ -5,13 +5,12 @@ import { useGenieThreads } from './lib/genie';
 import Header from './components/Header';
 import Explorer from './pages/Explorer';
 import Anomalies from './pages/Anomalies';
-import Reservations from './pages/Reservations';
 
-type TabType = 'explorer' | 'anomalies' | 'reservations';
+type TabType = 'explorer' | 'anomalies';
 
 function initialTab(): TabType {
   const h = window.location.hash.slice(1);
-  return h === 'anomalies' || h === 'reservations' ? h : 'explorer';
+  return h === 'anomalies' ? h : 'explorer';
 }
 
 function initialModel(): ModelKey {
@@ -58,8 +57,6 @@ function App() {
     [changeModel],
   );
 
-  const ntAgent = models.find(m => m.key === 'nt')?.agent_name || 'Wyndham NT Performance';
-
   return (
     <div className="min-h-screen bg-surface-secondary">
       <Header activeTab={tab} onTabChange={changeTab} dataAsOf={dataAsOf} anomalyCount={anomalyCount} />
@@ -78,9 +75,6 @@ function App() {
           />
         </div>
         {tab === 'anomalies' && <Anomalies models={models} onInvestigate={askIn} onCount={setAnomalyCount} />}
-        <div className={tab === 'reservations' ? '' : 'hidden'}>
-          <Reservations genie={genie} agentName={ntAgent} dataAsOf={dataAsOf} />
-        </div>
       </main>
     </div>
   );

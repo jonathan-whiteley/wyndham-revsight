@@ -27,9 +27,8 @@
 
 | Tab | What you get |
 |---|---|
-| **Explorer** | Ask a question, then click any field to add a breakout. Genie writes the SQL against a governed metric view; the pivot panel re-shapes results without re-querying; one click exports a native Excel pivot. |
+| **Explorer** | Ask a question, then click any field to add a breakout. Genie writes the SQL against a governed metric view; the pivot panel re-shapes results without re-querying; one click exports a native Excel pivot. Thumbs up/down and comments go straight to the Genie agent's feedback, recorded as the viewer. |
 | **Anomalies** | Outliers and data-quality issues (implausible revenue, capacity violations, missing NT feeds, RGI drops) with a chart against the expected band. |
-| **Reservations** | Drill to confirmation-level rows on a 556M-row reservation table, with live query performance stats. |
 
 Two Genie agents sit behind the app: **NT Performance** (daily occupancy, ADR, RevPAR) and **STR Comp Set** (weekly RGI, MPI, ARI). Each knows the Wyndham glossary and refuses joins that don't make sense (for example booking channel by comp set).
 
@@ -37,7 +36,7 @@ Two Genie agents sit behind the app: **NT Performance** (daily occupancy, ADR, R
 
 ```mermaid
 flowchart LR
-    U([Revenue analyst]) --> UI[React UI<br/>Explorer · Anomalies · Reservations]
+    U([Revenue analyst]) --> UI[React UI<br/>Explorer · Anomalies]
     UI --> API[FastAPI backend<br/>Databricks App]
     API -- questions --> G1[Genie agent<br/>NT Performance]
     API -- questions --> G2[Genie agent<br/>STR Comp Set]
@@ -50,7 +49,7 @@ flowchart LR
     API -- export --> X[Excel pivot]
 ```
 
-Everything the app reads lives in **one Unity Catalog schema** that you choose. The app's service principal only needs read access to it.
+Everything the app reads lives in **one Unity Catalog schema** that you choose. The app runs **on behalf of each viewer** (user authorization), so every Genie question and query uses the viewer's own Unity Catalog access. If user authorization is off in the workspace, it falls back to its service principal, which then needs read access to the schema.
 
 ## 🚀 Quick start: choose your path
 
@@ -198,9 +197,16 @@ Everything else follows from these values: the SQL in `setup/sql/` uses `{{catal
 | | `USE SCHEMA` and `CREATE TABLE` on `UC_CATALOG.UC_SCHEMA` | Create the tables and metric views |
 | | `CAN_USE` on the SQL warehouse | Run the setup SQL |
 | | Access to Databricks Apps and Genie in the workspace | Create the app and the two spaces |
-| **The app's service principal** (created with the app) | `USE CATALOG`, `USE SCHEMA`, `SELECT` on the schema | Read the data (`scripts/grant_app_access.sh`) |
+| **A workspace admin** (once) | Turn on user authorization for Databricks Apps | Lets the app act as each viewer with the `sql` and `genie` scopes |
+| **Each viewer** (or a group) | `CAN_USE` on the app | Open it |
+| | `CAN_RUN` on both Genie spaces | Ask questions |
+| | `CAN_USE` on the SQL warehouse | Genie and the app run SQL as the viewer |
+| | `USE CATALOG`, `USE SCHEMA`, `SELECT` on the schema | Read the metric views and tables |
+| **The app's service principal** (only if user authorization is off) | `USE CATALOG`, `USE SCHEMA`, `SELECT` on the schema | Read the data (`scripts/grant_app_access.sh`) |
 | | `CAN_RUN` on both Genie spaces | Genie spaces aren't covered by app resources (`scripts/grant_app_access.sh`) |
 | | `CAN_USE` on the warehouse | Granted automatically by `bind_resources.sh` + `deploy.sh` |
+
+Each viewer approves the app's scopes the first time they open it.
 
 > [!TIP]
 > **Can't run `GRANT` on your schema?** That's common when you have write access but don't own the schema. Send `scripts/grant_app_access.sh` and your `config.env` to the schema owner (or anyone with `MANAGE` on it) and ask them to run it. It prints exactly what it grants.
@@ -216,7 +222,7 @@ scripts/run_local.sh --dev    # Vite hot reload on http://localhost:5173
 
 The built UI in `app/frontend/dist` is **committed** so the workspace path needs no Node. After you change `app/frontend/src`, run `(cd app/frontend && npm run build)` and commit `dist` too (`scripts/deploy.sh` rebuilds it automatically).
 
-Locally the app runs as **you** (your CLI profile), so it sees whatever you can see. In Databricks Apps it runs as its service principal; test there before you share the link.
+Locally the app runs as **you** (your CLI profile), so it sees whatever you can see. In Databricks Apps it runs as each viewer, or as its service principal if user authorization is off; test there before you share the link.
 
 To re-run the demo questions against your Genie spaces and record answers and timings:
 ```bash
@@ -255,7 +261,10 @@ set -a; source config.env; set +a; python3 setup/genie/acceptance.py
 
 | Symptom | Fix |
 |---|---|
-| Genie calls fail with `PermissionDenied: Unable to get space` | The app's service principal isn't on the space ACL. Run `scripts/grant_app_access.sh` (no redeploy needed). |
+| Genie calls fail with `PermissionDenied: Unable to get space` | The viewer (or, with user authorization off, the app's service principal) isn't on the space ACL. Give the viewer `CAN_RUN`, or run `scripts/grant_app_access.sh` (no redeploy needed). |
+| `does not have required scopes` | The app lost its `user_api_scopes` (an update without them drops them). Re-run `scripts/bind_resources.sh` or the notebook's step 5, then have the viewer reload. |
+| Genie or SQL calls fail with `Invalid scope, required scopes: genie` or a `403` on `OpenSession`, though the app shows the scopes | The viewer approved the app before the scopes were added, so their token still has only the defaults. Open the app in a browser and click **Authorize** on the consent screen. Use `genie`, not the deprecated `dashboards.genie`. |
+| Deploy fails with `user token passthrough not enabled` | User authorization is off in the workspace. Ask a workspace admin to enable it; the scripts and notebook fall back to the service principal meanwhile. |
 | Data calls fail with `Error during request to server` or `TABLE_OR_VIEW_NOT_FOUND` | Check `UC_CATALOG`/`UC_SCHEMA`, run `scripts/grant_app_access.sh`, then `scripts/deploy.sh` (a deploy is what grants warehouse access after resources change). |
 | Resources disappeared from the app | `databricks apps update` replaces the whole object. Always use `scripts/bind_resources.sh`, which sends the full list. |
 | `apps update` fails right after creating the app | The app's compute is still starting. Wait until `databricks apps get <APP_NAME>` shows compute `ACTIVE`. |

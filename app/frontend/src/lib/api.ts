@@ -6,6 +6,8 @@ const API_BASE = '/api';
 
 export type ModelKey = 'nt' | 'str';
 
+export type FeedbackRating = 'POSITIVE' | 'NEGATIVE' | 'NONE';
+
 export interface Model {
   key: ModelKey;
   label: string;
@@ -100,12 +102,6 @@ export interface AnomalySeries {
   error?: string;
 }
 
-export interface ReservationStats {
-  row_count: number | null;
-  size_in_bytes: number | null;
-  num_files: number | null;
-}
-
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let detail = `${res.status} ${res.statusText}`;
@@ -136,13 +132,19 @@ export const apiClient = {
   getGenieMessage: (model: ModelKey, conversation_id: string, message_id: string) =>
     fetch(`${API_BASE}/genie/message/${model}/${conversation_id}/${message_id}`).then(r => json<GenieMessage>(r)),
 
+  sendFeedback: (body: { model: ModelKey; conversation_id: string; message_id: string; rating: FeedbackRating; comment?: string }) =>
+    fetch(`${API_BASE}/genie/feedback`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(r => json<{ ok: boolean }>(r)),
+
   getPerf: (statement_id: string) => fetch(`${API_BASE}/genie/perf/${statement_id}`).then(r => json<PerfMetrics>(r)),
 
   getAnomalies: (): Promise<Anomaly[]> => fetch(`${API_BASE}/anomalies`).then(r => json<Anomaly[]>(r)),
 
   getAnomalySeries: (id: string) => fetch(`${API_BASE}/anomalies/${id}/series`).then(r => json<AnomalySeries>(r)),
 
-  getReservationStats: () => fetch(`${API_BASE}/stats/reservations`).then(r => json<ReservationStats>(r)),
 
   getDataAsOf: () => fetch(`${API_BASE}/stats/data-as-of`).then(r => json<{ date: string | null }>(r)),
 

@@ -234,10 +234,21 @@ resources = [
     {"name": "genie_space_nt", "genie_space": {"space_id": cfg["GENIE_SPACE_NT"], "permission": "CAN_RUN"}},
     {"name": "genie_space_str", "genie_space": {"space_id": cfg["GENIE_SPACE_STR"], "permission": "CAN_RUN"}},
 ]
-app = api("PATCH", f"/api/2.0/apps/{APP_NAME}",
-          body={"name": APP_NAME, "description": "RevSight IQ: Genie revenue explorer on UC metric views", "resources": resources})
+# On-behalf-of-user scopes: the app calls Genie and the warehouse as each viewer.
+# The PATCH replaces the whole app, so the scopes go in every time or they're dropped.
+body = {"name": APP_NAME, "description": "RevSight IQ: Genie revenue explorer on UC metric views",
+        "resources": resources, "user_api_scopes": ["sql", "genie"]}
+try:
+    app = api("PATCH", f"/api/2.0/apps/{APP_NAME}", body=body)
+except Exception as e:
+    if "passthrough" not in str(e).lower():
+        raise
+    print("⚠️  User authorization is off in this workspace: the app will run as its service principal.")
+    print("   Ask a workspace admin to enable it (Previews > Databricks Apps user authorization), then re-run this cell.")
+    app = api("PATCH", f"/api/2.0/apps/{APP_NAME}", body={k: v for k, v in body.items() if k != "user_api_scopes"})
 SP = app["service_principal_client_id"]
 print(f"✅ Resources bound: {', '.join(r['name'] for r in app.get('resources') or [])}")
+print(f"   User API scopes: {', '.join(app.get('user_api_scopes') or []) or 'none (runs as the service principal)'}")
 print(f"   App service principal: {SP}")
 
 # COMMAND ----------
@@ -245,6 +256,8 @@ print(f"   App service principal: {SP}")
 # MAGIC %md
 # MAGIC ## 6. Give the app read access
 # MAGIC `USE CATALOG`, `USE SCHEMA` and `SELECT` on your schema, and `CAN_RUN` on both Genie spaces. If you can't grant on the schema, this prints the exact statements to send to your schema owner and carries on.
+# MAGIC
+# MAGIC With user authorization on (step 5 printed the scopes), the app reads data **as each viewer**, so these grants are only a fallback. If they fail, you can skip them; each viewer needs that access themselves instead.
 
 # COMMAND ----------
 
