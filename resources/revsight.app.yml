@@ -5,7 +5,8 @@ resources:
       description: "RevSight IQ: Genie revenue explorer on UC metric views"
       source_code_path: ../app
       # Runs as each viewer (user authorization). Keep in sync with setup/user_api_scopes.json.
-      # Needs user authorization on in the workspace (else: "user token passthrough not enabled").
+      # User authorization is GA and allows all scopes by default; a workspace admin can narrow the
+      # allowlist under Settings > Development > Apps, and these scopes must stay on it.
       user_api_scopes:
         - genie
         - sql

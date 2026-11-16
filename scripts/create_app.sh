@@ -15,7 +15,7 @@ fi
 # update_mask changes only these fields: scopes on, resources off.
 if ! out=$(databricks apps create-update "$APP_NAME" "${P[@]}" -o json --json "{\"update_mask\": \"user_api_scopes,resources\", \"app\": {\"user_api_scopes\": $SCOPES, \"resources\": []}}" 2>&1); then
   echo "$out" >&2
-  [[ $out == *passthrough* ]] && echo "User authorization is off in this workspace. Ask a workspace admin to turn it on (Previews), then re-run." >&2
+  [[ $out == *passthrough* || $out == *scope* ]] && echo "The workspace may not allow these scopes for apps: $SCOPES. Ask a workspace admin to check Settings > Development > Apps, then re-run." >&2
   exit 1
 fi
 databricks apps get "$APP_NAME" "${P[@]}" -o json | python3 -c "
