@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, ArrowRightLeft, BarChart3, Check, Code2, Copy, FileSpreadsheet, Grid3x3, Loader2, Sparkles, Table2 } from 'lucide-react';
+import { AlertTriangle, ArrowRightLeft, BarChart3, Check, Code2, Copy, Download, Grid3x3, Loader2, Sparkles, Table2 } from 'lucide-react';
 import { Turn } from '../lib/genie';
 import Feedback from './Feedback';
 import Markdown from './Markdown';
@@ -12,6 +12,8 @@ interface Props {
   index: number;
   agentName: string;
   active: boolean;
+  /** More than one answer has a table, so say which one the pivot panel shows. */
+  manyTables?: boolean;
   otherModelLabel?: string;
   onSwitchModel?: (q: string) => void;
   onPivot?: () => void;
@@ -20,7 +22,7 @@ interface Props {
 
 const SWITCH_HINT = /(switch the data model|STR Comp Set \(weekly\)|NT Performance \(daily\))/i;
 
-export default function ResultCard({ turn, index, agentName, active, otherModelLabel, onSwitchModel, onPivot, onExport }: Props) {
+export default function ResultCard({ turn, index, agentName, active, manyTables, otherModelLabel, onSwitchModel, onPivot, onExport }: Props) {
   const [view, setView] = useState<'table' | 'chart'>('table');
   const [copied, setCopied] = useState(false);
   const r = turn.result;
@@ -91,20 +93,20 @@ export default function ResultCard({ turn, index, agentName, active, otherModelL
           {hasRows && (
             <>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <PerfBadge statementId={r.statement_id} elapsedMs={turn.elapsedMs} tableMs={turn.tableMs} />
-                  <div className="flex items-center gap-0.5">
-                    <button title="Table" onClick={() => setView('table')} className="p-1.5 rounded-lg hover:bg-gray-100">
-                      <Table2 className={`w-4 h-4 ${view === 'table' ? 'text-wyndham-blue' : 'text-text-secondary'}`} />
-                    </button>
-                    <button title="Chart" onClick={() => setView('chart')} className="p-1.5 rounded-lg hover:bg-gray-100">
-                      <BarChart3 className={`w-4 h-4 ${view === 'chart' ? 'text-wyndham-blue' : 'text-text-secondary'}`} />
-                    </button>
-                  </div>
+                  <span className="text-xs text-text-tertiary">
+                    {r.row_count.toLocaleString()} rows{r.truncated ? ' (truncated)' : ''}
+                  </span>
                 </div>
-                <span className="text-xs text-text-tertiary">
-                  {r.row_count.toLocaleString()} rows{r.truncated ? ' (truncated)' : ''}
-                </span>
+                <div className="flex items-center gap-0.5">
+                  <button title="Table" onClick={() => setView('table')} className="p-1.5 rounded-lg hover:bg-gray-100">
+                    <Table2 className={`w-4 h-4 ${view === 'table' ? 'text-wyndham-blue' : 'text-text-secondary'}`} />
+                  </button>
+                  <button title="Chart" onClick={() => setView('chart')} className="p-1.5 rounded-lg hover:bg-gray-100">
+                    <BarChart3 className={`w-4 h-4 ${view === 'chart' ? 'text-wyndham-blue' : 'text-text-secondary'}`} />
+                  </button>
+                </div>
               </div>
               {view === 'table' ? <ResultGrid columns={r.columns} rows={r.rows} /> : <ResultChart columns={r.columns} rows={r.rows} />}
             </>
@@ -125,27 +127,28 @@ export default function ResultCard({ turn, index, agentName, active, otherModelL
           )}
 
           {(hasRows || canRate) && (
-            <div className="flex flex-wrap items-center gap-2">
-              {/* The pivot panel follows the latest answer; this points it at an earlier one. */}
-              {hasRows && active && (
-                <span className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl text-wyndham-blue">
-                  <Grid3x3 className="w-3.5 h-3.5" />
-                  In pivot
-                </span>
-              )}
-              {hasRows && !active && onPivot && (
-                <button onClick={onPivot} className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-surface-secondary text-text-secondary hover:text-wyndham-blue">
-                  <Grid3x3 className="w-3.5 h-3.5" />
-                  Pivot this answer
-                </button>
-              )}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>{canRate && <Feedback model={turn.model} conversationId={turn.conversationId!} messageId={turn.messageId!} />}</div>
               {hasRows && (
-                <button onClick={onExport} className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-wyndham-blue text-white hover:bg-wyndham-blue-dark">
-                  <FileSpreadsheet className="w-3.5 h-3.5" />
-                  Export to Excel
-                </button>
+                <div className="flex items-center gap-1">
+                  {/* The pivot panel follows the latest answer; with several tables, say which one it shows. */}
+                  {active && manyTables && (
+                    <span className="inline-flex items-center gap-1.5 text-xs px-2 py-1.5 text-wyndham-blue">
+                      <Grid3x3 className="w-3.5 h-3.5" />
+                      Shown in pivot
+                    </span>
+                  )}
+                  {!active && onPivot && (
+                    <button onClick={onPivot} className="inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl bg-surface-secondary text-text-secondary hover:text-wyndham-blue">
+                      <Grid3x3 className="w-3.5 h-3.5" />
+                      Pivot this answer
+                    </button>
+                  )}
+                  <button onClick={onExport} title="Download as Excel (.xlsx)" aria-label="Download as Excel" className="p-2 rounded-lg text-text-secondary hover:text-wyndham-blue hover:bg-gray-100">
+                    <Download className="w-4 h-4" />
+                  </button>
+                </div>
               )}
-              {canRate && <Feedback model={turn.model} conversationId={turn.conversationId!} messageId={turn.messageId!} />}
             </div>
           )}
         </div>
