@@ -1,9 +1,9 @@
-import { Sparkles, ShieldCheck } from 'lucide-react';
+import { Loader2, Sparkles, ShieldCheck } from 'lucide-react';
 import { formatDate } from '../lib/format';
 
 interface HeaderProps {
-  /** null hides the chip (no warehouse in agents.yaml). */
-  dataAsOf: string | null;
+  /** null hides the chip (no warehouse in agents.yaml). A failed check with no last-known date hides it too. */
+  dataAsOf: { date: string | null; loading: boolean } | null;
 }
 
 export default function Header({ dataAsOf }: HeaderProps) {
@@ -25,10 +25,16 @@ export default function Header({ dataAsOf }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-3">
-          {dataAsOf !== null && (
+          {dataAsOf && dataAsOf.date && (
             <span className="inline-flex items-center gap-1.5 rounded-full text-xs px-3 py-1 bg-green-50 text-green-700">
               <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-              {dataAsOf ? `Data as of ${formatDate(dataAsOf)}` : 'Loading data date…'}
+              Data as of {formatDate(dataAsOf.date)}
+            </span>
+          )}
+          {dataAsOf && !dataAsOf.date && dataAsOf.loading && (
+            <span className="inline-flex items-center gap-1.5 rounded-full text-xs px-3 py-1 bg-gray-50 text-text-tertiary">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Checking data date…
             </span>
           )}
           <span className="inline-flex items-center gap-1.5 rounded-full text-xs px-3 py-1 bg-gray-100 text-gray-700">

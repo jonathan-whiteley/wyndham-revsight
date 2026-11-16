@@ -1,6 +1,8 @@
 """Data model (Genie agent) endpoints: picker entries, fields, starter questions, data as of."""
 
+import contextvars
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from fastapi import APIRouter, HTTPException
 from config import settings
 from services import agent_service
@@ -16,10 +18,20 @@ def _check(model: str):
         raise HTTPException(status_code=404, detail=str(e))
 
 
+def _failure(what: str, model: str, e: Exception) -> dict:
+    """Error payload. reauth: the viewer's sign-in predates the app's current scopes (see /reauth in main.py)."""
+    logger.warning(f"{what} for {model}: {e}")
+    return {"error": str(e).split(" Config:")[0], "reauth": "required scopes" in str(e)}
+
+
 @router.get("/models")
 def get_models():
-    """Every agent in agents.yaml, titled from Genie."""
-    return [agent_service.summary(a["key"]) for a in settings.agents()]
+    """Every agent in agents.yaml, titled from Genie (looked up in parallel)."""
+    keys = [a["key"] for a in settings.agents()]
+    # Copy the request context here (not in the worker), once per task, so each lookup runs as the viewer.
+    contexts = [contextvars.copy_context() for _ in keys]
+    with ThreadPoolExecutor(max_workers=min(8, len(keys))) as pool:
+        return list(pool.map(lambda ctx, k: ctx.run(agent_service.summary, k), contexts, keys))
 
 
 @router.get("/models/{model}/fields")
@@ -29,8 +41,7 @@ def get_fields(model: str):
     try:
         return {"groups": agent_service.field_groups(model)}
     except Exception as e:
-        logger.warning(f"Fields for {model}: {e}")
-        return {"groups": [], "error": str(e)}
+        return {"groups": [], **_failure("Fields", model, e)}
 
 
 @router.get("/models/{model}/samples")
@@ -47,11 +58,10 @@ def get_data_as_of(model: str):
     try:
         return {"date": agent_service.data_as_of(model)}
     except Exception as e:
-        logger.warning(f"Data as of for {model}: {e}")
-        return {"date": None, "error": str(e)}
+        return {"date": None, **_failure("Data as of", model, e)}
 
 
 @router.get("/features")
 def get_features():
-    """Optional tabs and widgets, from agents.yaml."""
+    """Optional widgets, from agents.yaml."""
     return {"data_as_of": bool(settings.warehouse_id())}
