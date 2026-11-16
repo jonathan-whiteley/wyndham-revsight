@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ShieldAlert } from 'lucide-react';
 import './index.css';
 import { apiClient, Features, Model, ModelKey } from './lib/api';
 import { readCache, writeCache } from './lib/cache';
@@ -19,7 +18,6 @@ function App() {
   const [models, setModels] = useState<Model[]>(() => readCache<Model[]>('models') || []);
   const [dataAsOf, setDataAsOf] = useState<{ date: string | null; loading: boolean }>({ date: null, loading: true });
   const [features, setFeatures] = useState<Features>(() => readCache<Features>('features') || { data_as_of: false });
-  const [reauth, setReauth] = useState(false);
   const [pending, setPending] = useState<{ model: ModelKey; question: string; nonce: number } | null>(null);
   const genie = useGenieThreads();
 
@@ -30,7 +28,6 @@ function App() {
         setModels(ms);
         writeCache('models', ms);
         setModel(m => (ms.some(x => x.key === m) ? m : ms[0]?.key || ''));
-        if (ms.some(x => x.reauth)) setReauth(true);
       })
       .catch(() => undefined);
     apiClient
@@ -49,7 +46,6 @@ function App() {
     apiClient
       .getDataAsOf(model)
       .then(d => {
-        if (d.reauth) setReauth(true);
         if (d.date) writeCache(`asof:${model}`, d.date);
         setDataAsOf(prev => ({ date: d.date || prev.date, loading: false }));
       })
@@ -76,18 +72,6 @@ function App() {
   return (
     <div className="min-h-screen bg-surface-secondary">
       <Header dataAsOf={features.data_as_of ? dataAsOf : null} />
-      {reauth && (
-        <div className="bg-amber-50 border-b border-amber-200 text-amber-900 text-sm">
-          <div className="max-w-[1600px] mx-auto px-6 py-2.5 flex items-center gap-3">
-            <ShieldAlert className="w-4 h-4 shrink-0" />
-            <span>RevSight was updated and needs you to approve its new access (read Unity Catalog tables) before it can load fields and the data date.</span>
-            {/* /reauth (main.py) clears the app session, so the next load asks for the new scopes. */}
-            <a href="/reauth" className="ml-auto shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white font-medium hover:bg-amber-700">
-              Re-authorize
-            </a>
-          </div>
-        </div>
-      )}
       <main className="max-w-[1600px] mx-auto px-6 py-6">
         <Explorer
           model={model}
@@ -98,7 +82,6 @@ function App() {
           pending={pending}
           onPendingConsumed={() => setPending(null)}
           onSwitchAndAsk={askIn}
-          onNeedsReauth={() => setReauth(true)}
         />
       </main>
     </div>
