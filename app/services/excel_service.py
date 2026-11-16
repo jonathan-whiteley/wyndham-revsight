@@ -8,7 +8,6 @@ from openpyxl import Workbook
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
-from config import settings
 
 HEADER_FILL = PatternFill("solid", fgColor="016FB7")
 HEADER_FONT = Font(bold=True, color="FFFFFF")
@@ -93,7 +92,7 @@ def write_data(ws, columns: List[str], rows: List[List[Any]]):
     _autofit(ws)
 
 
-def write_query(ws, question: str, sql: str, agent_name: str, data_as_of: str, row_count: int, truncated: bool):
+def write_query(ws, question: str, sql: str, agent_name: str, data_as_of: str, row_count: int, truncated: bool, source: str):
     meta = [
         ("Question", question),
         ("Genie agent", agent_name),
@@ -101,7 +100,7 @@ def write_query(ws, question: str, sql: str, agent_name: str, data_as_of: str, r
         ("Data as of", data_as_of),
         ("Rows exported", row_count),
         ("Truncated", "Yes: Genie returned a partial result" if truncated else "No"),
-        ("Source", f"Unity Catalog metric views, {settings.catalog()}.{settings.schema()} (RevSight IQ demo data)"),
+        ("Source", source),
         ("SQL", sql),
     ]
     for k, v in meta:
@@ -115,7 +114,8 @@ def write_query(ws, question: str, sql: str, agent_name: str, data_as_of: str, r
 
 
 def export_to_excel(question: str, sql: str, agent_name: str, columns: List[str], rows: List[List[Any]],
-                    data_as_of: str, pivot_spec: Optional[Dict[str, Any]] = None, truncated: bool = False) -> io.BytesIO:
+                    data_as_of: str, pivot_spec: Optional[Dict[str, Any]] = None, truncated: bool = False,
+                    source: str = "") -> io.BytesIO:
     wb = Workbook()
     first = wb.active
     if pivot_spec and pivot_spec.get("header") and pivot_spec.get("body"):
@@ -126,7 +126,7 @@ def export_to_excel(question: str, sql: str, agent_name: str, columns: List[str]
         first.title = "Data"
         data_ws = first
     write_data(data_ws, columns, rows)
-    write_query(wb.create_sheet("Query"), question, sql, agent_name, data_as_of, len(rows), truncated)
+    write_query(wb.create_sheet("Query"), question, sql, agent_name, data_as_of, len(rows), truncated, source)
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)

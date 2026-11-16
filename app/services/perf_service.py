@@ -3,7 +3,7 @@
 import logging
 import time
 from typing import Dict, Any
-from databricks.sdk import WorkspaceClient
+from services import user_auth
 
 logger = logging.getLogger(__name__)
 
@@ -13,15 +13,14 @@ EMPTY = {"duration_ms": None, "execution_ms": None, "rows_scanned": None, "rows_
 
 
 class PerfService:
-    def __init__(self):
-        self.client = WorkspaceClient()
-
     def get_query_perf(self, statement_id: str, attempts: int = 8, delay: float = 2.0) -> Dict[str, Any]:
-        """Query History lags a few seconds behind completion, so retry briefly."""
+        """Query History lags a few seconds behind completion, so retry briefly.
+        Runs as the viewer: under OBO, Genie runs the SQL as them, so only they can see it."""
+        client = user_auth.workspace_client()
         for i in range(attempts):
             try:
                 # Raw REST (not the SDK dataclass) so metrics like rows_scanned are kept.
-                res = self.client.api_client.do("GET", "/api/2.0/sql/history/queries", query={
+                res = client.api_client.do("GET", "/api/2.0/sql/history/queries", query={
                     "include_metrics": "true", "max_results": 1, "filter_by.statement_ids": statement_id})
                 q = (res.get("res") or [None])[0]
                 if q is not None:

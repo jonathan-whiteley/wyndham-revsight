@@ -4,32 +4,24 @@ resources:
       name: ${var.app_name}
       description: "RevSight IQ: Genie revenue explorer on UC metric views"
       source_code_path: ../app
-      resources:
-        - name: sql_warehouse
-          sql_warehouse:
-            id: ${var.warehouse_id}
-            permission: CAN_USE
-        - name: genie_space_nt
-          genie_space:
-            name: Wyndham NT Performance
-            space_id: ${resources.genie_spaces.nt.id}
-            permission: CAN_RUN
-        - name: genie_space_str
-          genie_space:
-            name: Wyndham STR Comp Set
-            space_id: ${resources.genie_spaces.str.id}
-            permission: CAN_RUN
-      # Start command and env live here (not in app/app.yaml, which the bundle doesn't upload),
-      # so the catalog and schema follow --var. Applied by `databricks bundle run revsight`.
+      # Runs as each viewer (user authorization). Keep in sync with setup/user_api_scopes.json.
+      # Needs user authorization on in the workspace (else: "user token passthrough not enabled").
+      user_api_scopes:
+        - genie
+        - sql
+        - catalog.tables:read
+      # No resources: the app's service principal needs no access to the warehouse or Genie agents.
+      # Start command and env live here (not in app/app.yaml, which the bundle doesn't upload).
+      # The env values fill the ${VAR}s in app/agents.yaml. Applied by `databricks bundle run revsight`.
       config:
         command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
         env:
-          - name: DATABRICKS_WAREHOUSE_ID
-            value_from: sql_warehouse
+          - name: WAREHOUSE_ID
+            value: ${var.warehouse_id}
           - name: GENIE_SPACE_NT
-            value_from: genie_space_nt
+            value: ${resources.genie_spaces.nt.id}
           - name: GENIE_SPACE_STR
-            value_from: genie_space_str
+            value: ${resources.genie_spaces.str.id}
           - name: UC_CATALOG
             value: ${var.catalog}
           - name: UC_SCHEMA

@@ -1,23 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
 import './index.css';
-import { apiClient, Model, ModelKey } from './lib/api';
+import { apiClient, Features, Model, ModelKey } from './lib/api';
 import { useGenieThreads } from './lib/genie';
 import Header from './components/Header';
 import Explorer from './pages/Explorer';
 import Anomalies from './pages/Anomalies';
-import Reservations from './pages/Reservations';
 
-type TabType = 'explorer' | 'anomalies' | 'reservations';
+type TabType = 'explorer' | 'anomalies';
 
 function initialTab(): TabType {
   const h = window.location.hash.slice(1);
-  return h === 'anomalies' || h === 'reservations' ? h : 'explorer';
+  return h === 'anomalies' ? h : 'explorer';
 }
 
+/** ?model= or the last one used; checked against agents.yaml once the models load. */
 function initialModel(): ModelKey {
-  const p = new URLSearchParams(window.location.search).get('model');
-  if (p === 'nt' || p === 'str') return p;
-  return (localStorage.getItem('revsight-model') as ModelKey) === 'str' ? 'str' : 'nt';
+  return new URLSearchParams(window.location.search).get('model') || localStorage.getItem('revsight-model') || '';
 }
 
 function App() {
@@ -25,15 +23,34 @@ function App() {
   const [model, setModel] = useState<ModelKey>(initialModel);
   const [models, setModels] = useState<Model[]>([]);
   const [dataAsOf, setDataAsOf] = useState('');
+  const [features, setFeatures] = useState<Features>({ anomalies: false, data_as_of: false });
   const [anomalyCount, setAnomalyCount] = useState<number | null>(null);
   const [pending, setPending] = useState<{ model: ModelKey; question: string; nonce: number } | null>(null);
   const genie = useGenieThreads();
 
   useEffect(() => {
-    apiClient.getModels().then(setModels).catch(() => setModels([]));
-    apiClient.getDataAsOf().then(d => setDataAsOf(d.date || '')).catch(() => setDataAsOf(''));
-    apiClient.getAnomalies().then(a => setAnomalyCount(a.length)).catch(() => undefined);
+    apiClient
+      .getModels()
+      .then(ms => {
+        setModels(ms);
+        setModel(m => (ms.some(x => x.key === m) ? m : ms[0]?.key || ''));
+      })
+      .catch(() => setModels([]));
+    apiClient
+      .getFeatures()
+      .then(f => {
+        setFeatures(f);
+        if (f.anomalies) apiClient.getAnomalies().then(a => setAnomalyCount(a.length)).catch(() => undefined);
+        else if (initialTab() === 'anomalies') setTab('explorer');
+      })
+      .catch(() => undefined);
   }, []);
+
+  // "Data as of" follows the selected agent's metric view.
+  useEffect(() => {
+    if (!model || !features.data_as_of) return setDataAsOf('');
+    apiClient.getDataAsOf(model).then(d => setDataAsOf(d.date || '')).catch(() => setDataAsOf(''));
+  }, [model, features.data_as_of]);
 
   const changeTab = (t: TabType) => {
     setTab(t);
@@ -58,11 +75,9 @@ function App() {
     [changeModel],
   );
 
-  const ntAgent = models.find(m => m.key === 'nt')?.agent_name || 'Wyndham NT Performance';
-
   return (
     <div className="min-h-screen bg-surface-secondary">
-      <Header activeTab={tab} onTabChange={changeTab} dataAsOf={dataAsOf} anomalyCount={anomalyCount} />
+      <Header activeTab={tab} onTabChange={changeTab} dataAsOf={features.data_as_of ? dataAsOf : null} anomalyCount={features.anomalies ? anomalyCount : null} showAnomalies={features.anomalies} />
       <main className="max-w-[1600px] mx-auto px-6 py-6">
         {/* Explorer stays mounted so threads and pivots survive tab switches */}
         <div className={tab === 'explorer' ? '' : 'hidden'}>
@@ -77,10 +92,7 @@ function App() {
             onSwitchAndAsk={askIn}
           />
         </div>
-        {tab === 'anomalies' && <Anomalies models={models} onInvestigate={askIn} onCount={setAnomalyCount} />}
-        <div className={tab === 'reservations' ? '' : 'hidden'}>
-          <Reservations genie={genie} agentName={ntAgent} dataAsOf={dataAsOf} />
-        </div>
+        {tab === 'anomalies' && features.anomalies && <Anomalies models={models} onInvestigate={askIn} onCount={setAnomalyCount} />}
       </main>
     </div>
   );

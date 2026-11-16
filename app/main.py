@@ -12,15 +12,15 @@ A Databricks App for revenue performance analysis featuring:
 import logging
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import uvicorn
 
-from config import settings
 from api import router as api_router
-from services.sql_service import get_max_date
+from services import user_auth
 
 # Configure logging
 logging.basicConfig(
@@ -29,25 +29,17 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Global state for startup data
-app_state = {
-    "data_as_of": None,
-}
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """App lifecycle management."""
-    # Startup
+    # Startup. No data queries here: there's no viewer yet, so they'd need the
+    # service principal's grants. The UI fetches "data as of" per request.
     logger.info("RevSight IQ backend starting...")
-
-    # Get data as-of date
     try:
-        date = get_max_date(settings.catalog(), settings.schema(), "fact_sales_occupancy", "stay_date")
-        app_state["data_as_of"] = date
-        logger.info(f"Data as of: {date}")
+        from config import settings
+        logger.info("Genie agents: " + ", ".join(f"{a['key']} -> {a['space_id']}" for a in settings.agents()))
     except Exception as e:
-        logger.warning(f"Could not fetch data as-of date: {e}")
+        logger.error(f"agents.yaml: {e}")
 
     yield
 
@@ -58,7 +50,7 @@ async def lifespan(app: FastAPI):
 # Create FastAPI app
 app = FastAPI(
     title="RevSight IQ",
-    description="Wyndham Revenue Explorer powered by Genie",
+    description="Revenue explorer powered by Genie",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -72,14 +64,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def forward_user(request: Request, call_next):
+    """Run this request's Databricks calls as the viewer (see services/user_auth.py)."""
+    token = request.headers.get("x-forwarded-access-token")
+    if user_auth.IN_APPS and not token and request.url.path.startswith("/api/") and request.url.path != "/api/health":
+        # Never fall back to the app's service principal: it has no grants by design.
+        return JSONResponse(status_code=401, content={"detail": "No user token. Turn on user authorization for Databricks Apps "
+                                                                "and give the app its user_api_scopes (see the README), then reload."})
+    user_auth.set_request_user(token, request.headers.get("x-forwarded-email") or request.headers.get("x-forwarded-user"))
+    return await call_next(request)
+
+
 # Include API router
 app.include_router(api_router)
-
-# Expose state for endpoints
-@app.get("/api/startup-state")
-async def get_startup_state():
-    """Get startup state (data as-of date, etc)."""
-    return app_state
 
 
 # Mount static files for React frontend

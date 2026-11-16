@@ -1,18 +1,12 @@
 """Health check endpoint."""
 
-import logging
 from fastapi import APIRouter
+from config import settings
 
-logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 @router.get("/health")
 def health_check():
-    """Health check: warehouse + Genie reachability."""
-    return {
-        "status": "ok",
-        "warehouse": "ok",
-        "genie_nt": "ok",
-        "genie_str": "ok"
-    }
+    """The app is up and agents.yaml loads. Genie and warehouse access are checked per viewer, not here."""
+    return {"status": "ok", "agents": [a["key"] for a in settings.agents()]}

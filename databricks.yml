@@ -1,4 +1,6 @@
-# RevSight IQ as a Declarative Automation Bundle (DAB): the app, both Genie spaces and a grant job.
+# RevSight IQ demo as a Declarative Automation Bundle (DAB): the app and both demo Genie spaces.
+# The app runs as each viewer, so there's no grant step. For your own Genie agents, edit
+# app/agents.yaml and deploy with the workspace_deploy notebook (Deploy = app) or scripts/.
 # This path reads databricks.yml and --var flags, NOT config.env (config.env is for the
 # workspace_deploy notebook and the laptop scripts).
 #
@@ -8,7 +10,6 @@
 # Then, from the repo root:
 #   databricks bundle validate --strict $V
 #   databricks bundle deploy $V
-#   databricks bundle run grant_app_access $V   # schema grants for the app's service principal
 #   databricks bundle run revsight $V           # deploy the app code, prints the URL
 # where V="--var catalog=my_catalog --var schema=my_schema --var warehouse_id=<id> --var app_name=<unique-name>"
 bundle:
@@ -45,7 +46,7 @@ variables:
     description: Existing schema you can create tables in (bundles never create it)
     default: wyndham
   warehouse_id:
-    description: SQL warehouse for Genie, the app and the grant job (serverless recommended)
+    description: SQL warehouse for the Genie spaces and the app's "data as of" and Anomalies (serverless recommended)
     default: c02d7ad10080ab8d
   app_name:
     description: App name (lowercase letters, numbers, dashes; 30 characters max; unique in the workspace). Development mode does NOT prefix app names.
@@ -67,3 +68,4 @@ targets:
   #     catalog: my_catalog
   #     schema: my_schema
   #     warehouse_id: 0123456789abcdef
+  #     app_name: my-revsight

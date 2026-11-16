@@ -2,38 +2,30 @@
 
 import logging
 from typing import List, Dict, Any, Optional
-from databricks.sdk.core import Config
 from databricks.sql import connect
 
 from config import settings
+from services import user_auth
 
 logger = logging.getLogger(__name__)
 
 
-_cfg: Optional[Config] = None
-
-
-def _config() -> Config:
-    """SDK config: app service principal (OAuth M2M) in Apps, CLI profile locally."""
-    global _cfg
-    if _cfg is None:
-        _cfg = Config()
-    return _cfg
-
-
 def get_sql_connection():
-    """Get a connection to the Databricks SQL Warehouse."""
+    """Connection to the app's SQL warehouse as the viewer (Apps) or your CLI profile (local)."""
     warehouse_id = settings.warehouse_id()
-    cfg = _config()
-
-    # credentials_provider works for every SDK auth type; a static token is
-    # empty for OAuth M2M and makes the connector fall back to a browser login.
-    conn = connect(
-        server_hostname=cfg.host.replace("https://", "").rstrip("/"),
+    if not warehouse_id:
+        raise RuntimeError("No warehouse_id in agents.yaml: the app's own SQL (data as of, Anomalies) is off.")
+    conn_args = dict(
+        server_hostname=user_auth.host().replace("https://", "").rstrip("/"),
         http_path=f"/sql/1.0/warehouses/{warehouse_id}",
-        credentials_provider=lambda: cfg.authenticate,
     )
-    return conn
+    token = user_auth.user_token()
+    if token:
+        return connect(**conn_args, access_token=token)
+    # Local: credentials_provider works for every SDK auth type; a static token is
+    # empty for OAuth and makes the connector fall back to a browser login.
+    cfg = user_auth.local_config()
+    return connect(**conn_args, credentials_provider=lambda: cfg.authenticate)
 
 
 def execute_query(sql: str, params: Optional[Dict[str, Any]] = None) -> tuple[List[Dict[str, Any]], List[str]]:
@@ -69,20 +61,6 @@ def execute_query(sql: str, params: Optional[Dict[str, Any]] = None) -> tuple[Li
     except Exception as e:
         logger.error(f"SQL execution error: {e}")
         raise
-
-
-def get_table_stats(catalog: str, schema: str, table: str) -> Dict[str, Any]:
-    """Row count (Delta count(*) is answered from metadata) plus DESCRIBE DETAIL size and files."""
-    fq = f"{catalog}.{schema}.{table}"
-    try:
-        detail, _ = execute_query(f"DESCRIBE DETAIL {fq}")
-        count, _ = execute_query(f"SELECT count(*) AS n FROM {fq}")
-        d = detail[0] if detail else {}
-        return {"row_count": count[0]["n"] if count else None,
-                "size_in_bytes": d.get("sizeInBytes"), "num_files": d.get("numFiles")}
-    except Exception as e:
-        logger.error(f"Error getting table stats: {e}")
-        return {"row_count": None, "size_in_bytes": None, "num_files": None}
 
 
 def get_max_date(catalog: str, schema: str, table: str, date_column: str) -> Optional[str]:

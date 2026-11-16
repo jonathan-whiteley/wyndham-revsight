@@ -2,7 +2,7 @@ import { apiClient } from './api';
 import { Turn } from './genie';
 import { PivotSpec, PivotTable } from './pivot';
 
-export async function downloadXlsx(turn: Turn, agentName: string, dataAsOf: string, pivot?: { spec: PivotSpec; table: PivotTable } | null) {
+export async function downloadXlsx(turn: Turn, agentName: string, dataAsOf: string, pivot?: { spec: PivotSpec; table: PivotTable } | null, metricView?: string | null) {
   const r = turn.result;
   if (!r) return;
   const blob = await apiClient.exportXlsx({
@@ -13,6 +13,7 @@ export async function downloadXlsx(turn: Turn, agentName: string, dataAsOf: stri
     rows: r.rows,
     data_as_of: dataAsOf,
     truncated: r.truncated,
+    metric_view: metricView,
     pivot: pivot
       ? { ...pivot.spec, header: pivot.table.header, body: pivot.table.body, totals: pivot.table.totals, value_label: pivot.spec.values.join(',') }
       : undefined,
