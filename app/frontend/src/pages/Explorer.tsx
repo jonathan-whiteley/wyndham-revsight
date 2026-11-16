@@ -22,11 +22,9 @@ interface Props {
   pending: { model: ModelKey; question: string; nonce: number } | null;
   onPendingConsumed: () => void;
   onSwitchAndAsk: (target: ModelKey, question: string) => void;
-  /** The viewer must sign in again to grant new scopes (fields came back with a scope error). */
-  onNeedsReauth: () => void;
 }
 
-export default function Explorer({ model, models, onModelChange, genie, dataAsOf, pending, onPendingConsumed, onSwitchAndAsk, onNeedsReauth }: Props) {
+export default function Explorer({ model, models, onModelChange, genie, dataAsOf, pending, onPendingConsumed, onSwitchAndAsk }: Props) {
   const [fields, setFields] = useState<FieldGroup[]>([]);
   const [fieldsState, setFieldsState] = useState<{ loading: boolean; error?: string }>({ loading: true });
   const [question, setQuestion] = useState('');
@@ -55,7 +53,6 @@ export default function Explorer({ model, models, onModelChange, genie, dataAsOf
           setFields(d.groups);
           writeCache(`fields:${model}`, d.groups);
         }
-        if (d.reauth) onNeedsReauth();
         setFieldsState({ loading: false, error: d.groups.length ? undefined : d.error || 'The metric view has no columns you can see.' });
       })
       .catch(e => setFieldsState({ loading: false, error: e instanceof Error ? e.message : String(e) }));

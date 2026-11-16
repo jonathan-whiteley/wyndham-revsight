@@ -74,7 +74,6 @@ def summary(key: str) -> Dict[str, Any]:
         "starter_measure": a.get("starter_measure"),
         "starter_dimension": a.get("starter_dimension"),
         "error": error.split(" Config:")[0] if error else None,
-        "reauth": bool(error and "required scopes" in error),
     }
 
 

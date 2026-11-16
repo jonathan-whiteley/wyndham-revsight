@@ -21,14 +21,11 @@ export interface Model {
   starter_dimension?: string | null;
   /** Set when the viewer can't read the Genie agent. */
   error?: string | null;
-  /** The viewer's sign-in predates the app's current scopes: send them to /reauth. */
-  reauth?: boolean;
 }
 
 /** Error details the metadata endpoints return alongside their (empty) value. */
 export interface Failure {
   error?: string;
-  reauth?: boolean;
 }
 
 export interface Features {

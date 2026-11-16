@@ -12,7 +12,7 @@ import logging
 import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -77,18 +77,6 @@ async def forward_user(request: Request, call_next):
 
 # Include API router
 app.include_router(api_router)
-
-
-@app.get("/reauth")
-def reauth(request: Request):
-    """Sign in to the app again: clears the Databricks Apps session cookies so the next page load
-    re-runs OAuth and asks for any scopes added since the viewer last approved the app."""
-    response = RedirectResponse("/", status_code=302)
-    # The Apps proxy doesn't forward its session cookie, so expire it by name (plus any CSRF cookies we can see).
-    names = {"__Host-databricksapps"} | {n for n in request.cookies if n.startswith("__Host-databricksapps")}
-    for name in names:
-        response.delete_cookie(name, path="/", secure=True, httponly=True, samesite="lax")
-    return response
 
 
 # Mount static files for React frontend

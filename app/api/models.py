@@ -19,9 +19,9 @@ def _check(model: str):
 
 
 def _failure(what: str, model: str, e: Exception) -> dict:
-    """Error payload. reauth: the viewer's sign-in predates the app's current scopes (see /reauth in main.py)."""
+    """Error payload shown in the UI (the SDK's config dump trimmed off)."""
     logger.warning(f"{what} for {model}: {e}")
-    return {"error": str(e).split(" Config:")[0], "reauth": "required scopes" in str(e)}
+    return {"error": str(e).split(" Config:")[0]}
 
 
 @router.get("/models")
