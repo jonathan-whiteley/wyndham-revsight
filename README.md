@@ -68,7 +68,7 @@ flowchart LR
 | 💻 | **[Option B: From your laptop](#option-b)** | Developers changing the code | Databricks CLI, Node 18+, Python 3.11+, `zsh` |
 | 📦 | **[Option C: Declarative Automation Bundles](#option-c)** | Teams that deploy the demo with DABs or CI | Databricks CLI (bundles) |
 
-**Before any path:** **read [Deploy to your own workspace](#deploy-your-own)**: the committed `config.env` and the `databricks.yml` defaults point at the reference demo, not at your schema. User authorization for Databricks Apps is generally available and on by default; if a workspace admin has narrowed the app scope allowlist (**Settings > Development > Apps**), it must still include `genie`, `sql` and `catalog.tables:read`.
+**Before any path:** **read [Deploy to your own workspace](#deploy-your-own)**: the committed `config.env` and the `databricks.yml` defaults point at the reference demo, not at your schema.
 
 <a id="option-a"></a>
 
@@ -245,7 +245,6 @@ Everything else follows from these values: the SQL in `setup/sql/` uses `{{catal
 
 | Who | Needs | Why |
 |---|---|---|
-| **A workspace admin** (only if the workspace restricts app scopes) | Keep `genie`, `sql` and `catalog.tables:read` on the allowlist under **Settings > Development > Apps** | The default allows all scopes; `None` turns user authorization off |
 | **You** (the person deploying) | Access to Databricks Apps in the workspace | Create the app |
 | | Demo only: `USE CATALOG` on `UC_CATALOG`, `USE SCHEMA` and `CREATE TABLE` on the schema, `CAN USE` on the warehouse, access to Genie | Build the tables and metric views, create the two agents |
 | | Your own agents: at least `CAN VIEW` on each agent and visibility of its metric view | The notebook preflight opens them as you |
