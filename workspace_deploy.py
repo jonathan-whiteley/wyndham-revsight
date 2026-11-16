@@ -95,7 +95,7 @@ print(f"""Repo folder : {ROOT}
 You         : {ME}
 Deploy      : {MODE}
 App         : {APP_NAME}  (source -> {APP_PATH})
-Warehouse   : {WAREHOUSE_ID or '(none: no "data as of" or Anomalies)'}""")
+Warehouse   : {WAREHOUSE_ID or '(none: no "data as of" date)'}""")
 if MODE == "demo":
     print(f"""Data        : {FQ}  (history from {DATA_START}, mode: {DATA_MODE})
 Genie folder: {GENIE_PARENT}""")

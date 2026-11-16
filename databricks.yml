@@ -46,7 +46,7 @@ variables:
     description: Existing schema you can create tables in (bundles never create it)
     default: wyndham
   warehouse_id:
-    description: SQL warehouse for the Genie spaces and the app's "data as of" and Anomalies (serverless recommended)
+    description: SQL warehouse for the Genie spaces and the app's "data as of" date (serverless recommended)
     default: c02d7ad10080ab8d
   app_name:
     description: App name (lowercase letters, numbers, dashes; 30 characters max; unique in the workspace). Development mode does NOT prefix app names.

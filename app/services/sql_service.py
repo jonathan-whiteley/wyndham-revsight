@@ -14,7 +14,7 @@ def get_sql_connection():
     """Connection to the app's SQL warehouse as the viewer (Apps) or your CLI profile (local)."""
     warehouse_id = settings.warehouse_id()
     if not warehouse_id:
-        raise RuntimeError("No warehouse_id in agents.yaml: the app's own SQL (data as of, Anomalies) is off.")
+        raise RuntimeError("No warehouse_id in agents.yaml: the 'data as of' date is off.")
     conn_args = dict(
         server_hostname=user_auth.host().replace("https://", "").rstrip("/"),
         http_path=f"/sql/1.0/warehouses/{warehouse_id}",

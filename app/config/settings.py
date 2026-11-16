@@ -54,11 +54,6 @@ def agent(key: str) -> Dict[str, Any]:
 
 
 def warehouse_id() -> Optional[str]:
-    """Warehouse for the app's own SQL ("data as of" and Anomalies). Genie uses its agent's warehouse."""
+    """Warehouse for the app's own SQL (the "data as of" date). Genie uses its agent's warehouse."""
     return config().get("warehouse_id") or None
 
-
-def anomalies_schema() -> Optional[str]:
-    """catalog.schema holding the demo anomaly tables; None hides the Anomalies tab."""
-    a = config().get("anomalies") or {}
-    return (a.get("schema") or None) if warehouse_id() else None

@@ -64,7 +64,7 @@ export default function Explorer({ model, models, onModelChange, genie, dataAsOf
     bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [turns.length]);
 
-  // A question handed over from another tab (Anomalies "Investigate", or a model switch chip).
+  // A question handed over from the "switch to <model> and ask again" chip.
   useEffect(() => {
     if (pending && pending.model === model) {
       send(pending.question);

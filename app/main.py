@@ -5,7 +5,6 @@ Main FastAPI Application
 A Databricks App for revenue performance analysis featuring:
 - Real-time hotel performance data via Genie agents
 - Revenue, occupancy, and comp set analysis
-- Anomaly detection and investigation
 - Excel export with pivot tables
 """
 

@@ -54,4 +54,4 @@ def get_data_as_of(model: str):
 @router.get("/features")
 def get_features():
     """Optional tabs and widgets, from agents.yaml."""
-    return {"anomalies": bool(settings.anomalies_schema()), "data_as_of": bool(settings.warehouse_id())}
+    return {"data_as_of": bool(settings.warehouse_id())}
