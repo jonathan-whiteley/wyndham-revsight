@@ -1,20 +1,25 @@
 import { useCallback, useEffect, useState } from 'react';
+import { ShieldAlert } from 'lucide-react';
 import './index.css';
 import { apiClient, Features, Model, ModelKey } from './lib/api';
+import { readCache, writeCache } from './lib/cache';
 import { useGenieThreads } from './lib/genie';
 import Header from './components/Header';
 import Explorer from './pages/Explorer';
 
 /** ?model= or the last one used; checked against agents.yaml once the models load. */
 function initialModel(): ModelKey {
-  return new URLSearchParams(window.location.search).get('model') || localStorage.getItem('revsight-model') || '';
+  return (
+    new URLSearchParams(window.location.search).get('model') || localStorage.getItem('revsight-model') || readCache<Model[]>('models')?.[0]?.key || ''
+  );
 }
 
 function App() {
   const [model, setModel] = useState<ModelKey>(initialModel);
-  const [models, setModels] = useState<Model[]>([]);
-  const [dataAsOf, setDataAsOf] = useState('');
-  const [features, setFeatures] = useState<Features>({ data_as_of: false });
+  const [models, setModels] = useState<Model[]>(() => readCache<Model[]>('models') || []);
+  const [dataAsOf, setDataAsOf] = useState<{ date: string | null; loading: boolean }>({ date: null, loading: true });
+  const [features, setFeatures] = useState<Features>(() => readCache<Features>('features') || { data_as_of: false });
+  const [reauth, setReauth] = useState(false);
   const [pending, setPending] = useState<{ model: ModelKey; question: string; nonce: number } | null>(null);
   const genie = useGenieThreads();
 
@@ -23,16 +28,32 @@ function App() {
       .getModels()
       .then(ms => {
         setModels(ms);
+        writeCache('models', ms);
         setModel(m => (ms.some(x => x.key === m) ? m : ms[0]?.key || ''));
+        if (ms.some(x => x.reauth)) setReauth(true);
       })
-      .catch(() => setModels([]));
-    apiClient.getFeatures().then(setFeatures).catch(() => undefined);
+      .catch(() => undefined);
+    apiClient
+      .getFeatures()
+      .then(f => {
+        setFeatures(f);
+        writeCache('features', f);
+      })
+      .catch(() => undefined);
   }, []);
 
-  // "Data as of" follows the selected agent's metric view.
+  // "Data as of" follows the selected agent's metric view: last-known date at once, then the fresh one.
   useEffect(() => {
-    if (!model || !features.data_as_of) return setDataAsOf('');
-    apiClient.getDataAsOf(model).then(d => setDataAsOf(d.date || '')).catch(() => setDataAsOf(''));
+    if (!model || !features.data_as_of) return;
+    setDataAsOf({ date: readCache<string>(`asof:${model}`), loading: true });
+    apiClient
+      .getDataAsOf(model)
+      .then(d => {
+        if (d.reauth) setReauth(true);
+        if (d.date) writeCache(`asof:${model}`, d.date);
+        setDataAsOf(prev => ({ date: d.date || prev.date, loading: false }));
+      })
+      .catch(() => setDataAsOf(prev => ({ ...prev, loading: false })));
   }, [model, features.data_as_of]);
 
   const changeModel = useCallback((m: ModelKey) => {
@@ -55,16 +76,29 @@ function App() {
   return (
     <div className="min-h-screen bg-surface-secondary">
       <Header dataAsOf={features.data_as_of ? dataAsOf : null} />
+      {reauth && (
+        <div className="bg-amber-50 border-b border-amber-200 text-amber-900 text-sm">
+          <div className="max-w-[1600px] mx-auto px-6 py-2.5 flex items-center gap-3">
+            <ShieldAlert className="w-4 h-4 shrink-0" />
+            <span>RevSight was updated and needs you to approve its new access (read Unity Catalog tables) before it can load fields and the data date.</span>
+            {/* /reauth (main.py) clears the app session, so the next load asks for the new scopes. */}
+            <a href="/reauth" className="ml-auto shrink-0 px-3 py-1.5 rounded-lg bg-amber-600 text-white font-medium hover:bg-amber-700">
+              Re-authorize
+            </a>
+          </div>
+        </div>
+      )}
       <main className="max-w-[1600px] mx-auto px-6 py-6">
         <Explorer
           model={model}
           models={models}
           onModelChange={changeModel}
           genie={genie}
-          dataAsOf={dataAsOf}
+          dataAsOf={dataAsOf.date || ''}
           pending={pending}
           onPendingConsumed={() => setPending(null)}
           onSwitchAndAsk={askIn}
+          onNeedsReauth={() => setReauth(true)}
         />
       </main>
     </div>

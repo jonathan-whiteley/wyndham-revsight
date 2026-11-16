@@ -62,7 +62,11 @@ export default function Feedback({ model, conversationId, messageId }: Props) {
   );
 
   return (
-    <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      <div className="flex items-center gap-0.5">
+        {thumb('POSITIVE', ThumbsUp, 'Good answer')}
+        {thumb('NEGATIVE', ThumbsDown, 'Bad answer')}
+      </div>
       {open && (
         <form onSubmit={submit} className="flex items-center gap-1.5">
           <input
@@ -85,10 +89,6 @@ export default function Feedback({ model, conversationId, messageId }: Props) {
         </span>
       )}
       {state === 'error' && <span className="text-[11px] text-red-600" title={error}>Feedback not sent</span>}
-      <div className="flex items-center gap-0.5">
-        {thumb('POSITIVE', ThumbsUp, 'Good answer')}
-        {thumb('NEGATIVE', ThumbsDown, 'Bad answer')}
-      </div>
     </div>
   );
 }

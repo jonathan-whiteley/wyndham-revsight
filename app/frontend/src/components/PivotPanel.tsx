@@ -1,4 +1,4 @@
-import { DragEvent, useEffect, useMemo, useState } from 'react';
+import { DragEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { FileSpreadsheet, Grid3x3, Loader2, X } from 'lucide-react';
 import { Turn } from '../lib/genie';
 import { Field } from '../lib/api';
@@ -66,13 +66,32 @@ export default function PivotPanel({ turn, fields, busy: genieBusy, placements, 
   const [over, setOver] = useState<Zone | null>(null);
   const [miss, setMiss] = useState('');
 
-  // New result: keep the fields already placed that still exist, else guess a layout; then place dropped fields.
+  // The result the pivot showed last (columns, start time), to spot what a newer follow-up added.
+  const prevColumns = useRef<string[]>([]);
+  const prevStarted = useRef(0);
+
+  // New result: keep the fields already placed that still exist, else guess a layout; add columns the
+  // follow-up brought (measures to Values, dimensions to Rows); then place dropped fields where they were dropped.
   useEffect(() => {
     if (!r) return;
+    // Only a newer answer adds columns; pointing the pivot at an earlier answer just keeps the layout.
+    const before = turn && turn.startedAt > prevStarted.current ? prevColumns.current : [];
+    prevColumns.current = r.columns.map(c => c.name);
+    prevStarted.current = Math.max(prevStarted.current, turn?.startedAt || 0);
     setSpec(prev => {
       const has = (n: string) => r.columns.some(c => c.name === n);
       const kept = { ...prev, rows: prev.rows.filter(has), cols: prev.cols.filter(has), values: prev.values.filter(has) };
-      const next = kept.rows.length && kept.values.length ? kept : defaultSpec(r.columns);
+      const keep = kept.rows.length && kept.values.length;
+      const next = keep ? kept : defaultSpec(r.columns);
+      if (keep && before.length) {
+        const dropped = new Set(placements.map(p => matchColumn(r.columns, p.field.name, p.field.label)));
+        for (const c of r.columns) {
+          if (before.includes(c.name) || dropped.has(c.name)) continue;
+          const kind = columnKind(c.name, c.type);
+          const zone: Zone = isNumericKind(kind) && !/^(year|quarter)$/.test(c.name) ? 'values' : 'rows';
+          next[zone] = [...next[zone], c.name];
+        }
+      }
       for (const p of placements) {
         const col = matchColumn(r.columns, p.field.name, p.field.label);
         if (!col) continue;
@@ -86,7 +105,17 @@ export default function PivotPanel({ turn, fields, busy: genieBusy, placements, 
 
   const table = useMemo(() => (r ? buildPivot(columns.map(c => c.name), r.rows, spec) : null), [r, spec, columns]);
   const used = new Set([...spec.rows, ...spec.cols, ...spec.values]);
-  const valueKind = columnKind(spec.values[0] || '');
+  // Each value column keeps its own unit (occupancy %, ADR $) when several measures are pivoted.
+  const valueOf = (colKey: string) => (spec.values.length > 1 ? colKey.split(' · ').pop() || '' : spec.values[0] || '');
+  const kindOf = (name: string) => columnKind(name, columns.find(c => c.name === name)?.type);
+  const valueKinds = (table?.colKeys || []).map(ck => kindOf(valueOf(ck)));
+  const colLabel = (ck: string) => {
+    if (spec.values.length <= 1) return formatValue(ck, columnKind(spec.cols[0] || '')) || ck;
+    const parts = ck.split(' · ');
+    const name = parts.pop() || '';
+    const base = parts.join(' · ');
+    return [base && (formatValue(base, columnKind(spec.cols[0] || '')) || base), prettyLabel(name)].filter(Boolean).join(' · ');
+  };
   // Row labels: dates as Oct 4, 2026 and booleans as Yes/No, like the result table.
   const rowKinds = spec.rows.map(n => columnKind(n, columns.find(c => c.name === n)?.type));
 
@@ -207,7 +236,7 @@ export default function PivotPanel({ turn, fields, busy: genieBusy, placements, 
                   <tr>
                     {table.header.map((h, i) => (
                       <th key={i} className={`px-2 py-1.5 font-medium whitespace-nowrap ${i < table.rowFieldCount ? 'text-left' : 'text-right'}`}>
-                        {i < table.rowFieldCount ? prettyLabel(h) : formatValue(h, columnKind(spec.cols[0] || '')) || h}
+                        {i < table.rowFieldCount ? prettyLabel(h) : colLabel(h)}
                       </th>
                     ))}
                   </tr>
@@ -217,7 +246,7 @@ export default function PivotPanel({ turn, fields, busy: genieBusy, placements, 
                     <tr key={j}>
                       {row.map((v, k) => (
                         <td key={k} className={`px-2 py-1.5 whitespace-nowrap ${k < table.rowFieldCount ? '' : 'text-right tabular-nums'}`}>
-                          {k < table.rowFieldCount ? formatValue(v, rowKinds[k]) : formatValue(v, valueKind)}
+                          {k < table.rowFieldCount ? formatValue(v, rowKinds[k]) : formatValue(v, valueKinds[k - table.rowFieldCount])}
                         </td>
                       ))}
                     </tr>
@@ -226,7 +255,7 @@ export default function PivotPanel({ turn, fields, busy: genieBusy, placements, 
                     <tr className="bg-gray-50 font-medium">
                       {table.totals.map((v, k) => (
                         <td key={k} className={`px-2 py-1.5 whitespace-nowrap ${k < table.rowFieldCount ? '' : 'text-right tabular-nums'}`}>
-                          {k < table.rowFieldCount ? v : formatValue(v, valueKind)}
+                          {k < table.rowFieldCount ? v : formatValue(v, valueKinds[k - table.rowFieldCount])}
                         </td>
                       ))}
                     </tr>

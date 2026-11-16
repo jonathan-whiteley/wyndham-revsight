@@ -21,6 +21,14 @@ export interface Model {
   starter_dimension?: string | null;
   /** Set when the viewer can't read the Genie agent. */
   error?: string | null;
+  /** The viewer's sign-in predates the app's current scopes: send them to /reauth. */
+  reauth?: boolean;
+}
+
+/** Error details the metadata endpoints return alongside their (empty) value. */
+export interface Failure {
+  error?: string;
+  reauth?: boolean;
 }
 
 export interface Features {
@@ -94,13 +102,12 @@ export const apiClient = {
 
   getFeatures: (): Promise<Features> => fetch(`${API_BASE}/features`).then(r => json<Features>(r)),
 
-  getFields: (model: ModelKey): Promise<FieldGroup[]> =>
-    fetch(`${API_BASE}/models/${model}/fields`).then(r => json<{ groups: FieldGroup[] }>(r)).then(d => d.groups),
+  getFields: (model: ModelKey) => fetch(`${API_BASE}/models/${model}/fields`).then(r => json<{ groups: FieldGroup[] } & Failure>(r)),
 
   getSamples: (model: ModelKey): Promise<string[]> =>
     fetch(`${API_BASE}/models/${model}/samples`).then(r => json<{ questions: string[] }>(r)).then(d => d.questions),
 
-  getDataAsOf: (model: ModelKey) => fetch(`${API_BASE}/models/${model}/data-as-of`).then(r => json<{ date: string | null }>(r)),
+  getDataAsOf: (model: ModelKey) => fetch(`${API_BASE}/models/${model}/data-as-of`).then(r => json<{ date: string | null } & Failure>(r)),
 
   askGenie: (model: ModelKey, question: string, conversation_id?: string) =>
     fetch(`${API_BASE}/genie/ask`, {

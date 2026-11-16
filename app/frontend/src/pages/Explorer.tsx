@@ -1,8 +1,9 @@
 import { FormEvent, useEffect, useRef, useState } from 'react';
-import { ArrowUp, ChevronDown, GitBranch, Layers, MessageSquareText, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowUp, ChevronDown, GitBranch, Layers, Loader2, MessageSquareText, RotateCcw, Sparkles } from 'lucide-react';
 import { apiClient, FieldGroup, Model, ModelKey } from '../lib/api';
 import { GenieThreads } from '../lib/genie';
 import { downloadXlsx } from '../lib/export';
+import { readCache, writeCache } from '../lib/cache';
 import ResultCard from '../components/ResultCard';
 import PivotPanel, { Placement } from '../components/PivotPanel';
 
@@ -21,10 +22,13 @@ interface Props {
   pending: { model: ModelKey; question: string; nonce: number } | null;
   onPendingConsumed: () => void;
   onSwitchAndAsk: (target: ModelKey, question: string) => void;
+  /** The viewer must sign in again to grant new scopes (fields came back with a scope error). */
+  onNeedsReauth: () => void;
 }
 
-export default function Explorer({ model, models, onModelChange, genie, dataAsOf, pending, onPendingConsumed, onSwitchAndAsk }: Props) {
+export default function Explorer({ model, models, onModelChange, genie, dataAsOf, pending, onPendingConsumed, onSwitchAndAsk, onNeedsReauth }: Props) {
   const [fields, setFields] = useState<FieldGroup[]>([]);
+  const [fieldsState, setFieldsState] = useState<{ loading: boolean; error?: string }>({ loading: true });
   const [question, setQuestion] = useState('');
   const [samples, setSamples] = useState<string[]>([]);
   const [activeTurnId, setActiveTurnId] = useState<Record<ModelKey, string | null>>({});
@@ -38,19 +42,31 @@ export default function Explorer({ model, models, onModelChange, genie, dataAsOf
   const busy = turns.some(t => t.status === 'pending');
   const activeTurn = turns.find(t => t.id === activeTurnId[model]) || [...turns].reverse().find(t => t.status !== 'error' && t.result?.columns.length) || null;
 
+  // Show the last-known fields and starters for this agent at once, then refresh them.
   useEffect(() => {
-    setFields([]);
-    setSamples([]);
+    setFields(readCache<FieldGroup[]>(`fields:${model}`) || []);
+    setSamples(readCache<string[]>(`samples:${model}`) || []);
+    setFieldsState({ loading: true });
     if (!model) return;
     apiClient
       .getFields(model)
-      .then(setFields)
-      .catch(() => setFields([]));
+      .then(d => {
+        if (d.groups.length) {
+          setFields(d.groups);
+          writeCache(`fields:${model}`, d.groups);
+        }
+        if (d.reauth) onNeedsReauth();
+        setFieldsState({ loading: false, error: d.groups.length ? undefined : d.error || 'The metric view has no columns you can see.' });
+      })
+      .catch(e => setFieldsState({ loading: false, error: e instanceof Error ? e.message : String(e) }));
     apiClient
       .getSamples(model)
-      .then(setSamples)
-      .catch(() => setSamples([]));
-  }, [model]);
+      .then(qs => {
+        setSamples(qs);
+        writeCache(`samples:${model}`, qs);
+      })
+      .catch(() => undefined);
+  }, [model]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // If the re-query fails or returns no table, drop the waiting placeholders instead of spinning forever.
   const last = turns[turns.length - 1];
@@ -137,6 +153,15 @@ export default function Explorer({ model, models, onModelChange, genie, dataAsOf
 
           <h3 className="font-semibold text-sm mb-1">Fields</h3>
           <p className="text-[11px] text-text-tertiary mb-3">Click to ask Genie for the breakout, or drag into a pivot zone.</p>
+          {!fields.length && fieldsState.loading && (
+            <p className="flex items-center gap-1.5 text-[11px] text-text-tertiary mb-4">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Loading fields from {current?.metric_view || 'the metric view'}…
+            </p>
+          )}
+          {!fields.length && !fieldsState.loading && fieldsState.error && (
+            <p className="text-[11px] text-amber-700 mb-4 break-words">Couldn't load the fields: {fieldsState.error}</p>
+          )}
           {fields.map(g => (
             <div key={g.label} className="mb-4">
               <p className="text-[11px] font-medium text-text-tertiary uppercase tracking-wide mb-1.5">{g.label}</p>
@@ -174,7 +199,7 @@ export default function Explorer({ model, models, onModelChange, genie, dataAsOf
       </aside>
 
       {/* Thread */}
-      <div className="col-span-7 space-y-4 pb-28">
+      <div className="col-span-7 flex flex-col gap-4 min-h-[calc(100vh-7rem)]">
         <div className="flex items-center gap-2 text-xs text-text-secondary px-1">
           <MessageSquareText className="w-3.5 h-3.5 text-wyndham-blue" />
           Thread with <b className="text-text-primary">{current?.agent_name || 'Genie'}</b>
@@ -217,6 +242,7 @@ export default function Explorer({ model, models, onModelChange, genie, dataAsOf
               index={i + 1}
               agentName={current?.agent_name || 'Genie'}
               active={activeTurn?.id === t.id}
+              manyTables={turns.filter(x => x.result?.columns.length).length > 1}
               otherModelLabel={other?.label}
               onSwitchModel={q => {
                 if (!other) return;
@@ -237,6 +263,39 @@ export default function Explorer({ model, models, onModelChange, genie, dataAsOf
           </div>
         ))}
         <div ref={bottom} />
+        {/* Composer: sticky at the bottom of the thread column, so it never covers the side panels */}
+        <div className="sticky bottom-0 z-40 mt-auto pt-3 pb-4 bg-gradient-to-t from-surface-secondary via-surface-secondary">
+          <form onSubmit={onSubmit} className="bg-white rounded-2xl border border-gray-100 shadow-medium p-3 flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl wyndham-gradient flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+            <input
+              value={question}
+              onChange={e => setQuestion(e.target.value)}
+              placeholder={
+                turns.length ? `Ask ${current?.agent_name || 'Genie'} a follow-up, or click a field…` : `Ask ${current?.agent_name || 'Genie'} a question…`
+              }
+              className="flex-1 text-sm outline-none placeholder:text-text-tertiary"
+            />
+            {turns.length > 0 && (
+              <button
+                type="button"
+                onClick={() => genie.reset(model)}
+                className="text-xs px-3 py-2 rounded-xl text-text-secondary hover:bg-gray-100 flex items-center gap-1.5"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                New analysis
+              </button>
+            )}
+            <button
+              type="submit"
+              disabled={busy || !question.trim()}
+              className="w-9 h-9 rounded-xl bg-wyndham-blue text-white flex items-center justify-center disabled:opacity-50"
+            >
+              <ArrowUp className="w-4 h-4" />
+            </button>
+          </form>
+        </div>
       </div>
 
       {/* Pivot */}
@@ -252,39 +311,6 @@ export default function Explorer({ model, models, onModelChange, genie, dataAsOf
         />
       </aside>
 
-      {/* Composer */}
-      <div className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[min(1100px,calc(100vw-3rem))] z-40">
-        <form onSubmit={onSubmit} className="bg-white rounded-2xl border border-gray-100 shadow-medium p-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl wyndham-gradient flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-white" />
-          </div>
-          <input
-            value={question}
-            onChange={e => setQuestion(e.target.value)}
-            placeholder={
-              turns.length ? `Ask ${current?.agent_name || 'Genie'} a follow-up, or click a field…` : `Ask ${current?.agent_name || 'Genie'} a question…`
-            }
-            className="flex-1 text-sm outline-none placeholder:text-text-tertiary"
-          />
-          {turns.length > 0 && (
-            <button
-              type="button"
-              onClick={() => genie.reset(model)}
-              className="text-xs px-3 py-2 rounded-xl text-text-secondary hover:bg-gray-100 flex items-center gap-1.5"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              New analysis
-            </button>
-          )}
-          <button
-            type="submit"
-            disabled={busy || !question.trim()}
-            className="w-9 h-9 rounded-xl bg-wyndham-blue text-white flex items-center justify-center disabled:opacity-50"
-          >
-            <ArrowUp className="w-4 h-4" />
-          </button>
-        </form>
-      </div>
     </div>
   );
 }

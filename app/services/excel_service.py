@@ -60,8 +60,10 @@ def write_pivot(ws, pivot: Dict[str, Any]):
     header: List[str] = pivot["header"]
     ws.append(header)
     _style_header(ws, 1, len(header))
-    fmt = number_format(pivot.get("value_label", "") or ",".join(pivot.get("values", [])))
     n_row_fields = len(pivot.get("rows", [])) or 1
+    # Per value column: with several measures the header ends in " · <measure>", else it's the one measure.
+    values = pivot.get("values", []) or [pivot.get("value_label", "")]
+    fmts = [number_format(h.split(" · ")[-1] if len(values) > 1 else values[0]) for h in header[n_row_fields:]]
     for r in pivot["body"]:
         ws.append([to_cell(v) for v in r])
     if pivot.get("totals"):
@@ -69,7 +71,7 @@ def write_pivot(ws, pivot: Dict[str, Any]):
         for c in ws[ws.max_row]:
             c.font = GROUP_FONT
     for row in ws.iter_rows(min_row=2, min_col=n_row_fields + 1):
-        for c in row:
+        for c, fmt in zip(row, fmts):
             if fmt and isinstance(c.value, (int, float)):
                 c.number_format = fmt
     ws.freeze_panes = ws.cell(row=2, column=n_row_fields + 1)
